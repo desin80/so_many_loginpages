@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - 3D Pop Clay</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 圆润可爱的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --clay-bg: #e0e5ec;
+            --clay-primary: #6d5dfc;
+            --clay-text: #4a4a4a;
+            --clay-shadow-light: rgba(255, 255, 255, 0.8);
+            --clay-shadow-dark: rgba(163, 177, 198, 0.6);
+        }
+
+        body {
+            background-color: #f0f4f8;
+            color: var(--clay-text);
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            overflow-x: hidden; /* 防止横向滚动条 */
+        }
+
+        /* --- 核心 3D 黏土卡片 --- */
+        .clay-card {
+            background-color: #f0f4f8;
+            border-radius: 40px;
+            /* 经典的外凸阴影 */
+            box-shadow: 
+                20px 20px 60px #c8d0e7, 
+                -20px -20px 60px #ffffff;
+            border: 1px solid rgba(255,255,255,0.4);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- 3D 黏土输入框 (内凹) --- */
+        .clay-input-wrapper {
+            border-radius: 20px;
+            background-color: #f0f4f8;
+            /* 内凹阴影 */
+            box-shadow: 
+                inset 6px 6px 12px #c8d0e7, 
+                inset -6px -6px 12px #ffffff;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            padding: 4px 16px;
+        }
+        .clay-input-wrapper:focus-within {
+            box-shadow: 
+                inset 8px 8px 16px #c8d0e7, 
+                inset -8px -8px 16px #ffffff;
+            transform: scale(0.99);
+        }
+        .clay-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 12px 0;
+            font-weight: 700;
+            color: #555;
+            font-size: 1rem;
+        }
+        .clay-input::placeholder {
+            color: #a0aec0;
+            font-weight: 500;
+        }
+
+        /* --- 3D 浮动气泡按钮 --- */
+        .clay-btn {
+            border: none;
+            border-radius: 20px;
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            /* 默认状态：凸起 */
+            box-shadow: 
+                6px 6px 12px #c8d0e7, 
+                -6px -6px 12px #ffffff;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #7464ff, #6254e3);
+        }
+        .btn-secondary {
+            background: #f0f4f8;
+            color: #6d5dfc;
+            box-shadow: 
+                8px 8px 16px #c8d0e7, 
+                -8px -8px 16px #ffffff;
+        }
+        
+        .clay-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                8px 8px 20px #c8d0e7, 
+                -8px -8px 20px #ffffff;
+        }
+        .clay-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            /* 按下状态：变平或微凹 */
+            box-shadow: 
+                inset 4px 4px 8px rgba(0,0,0,0.2),
+                inset -4px -4px 8px rgba(255,255,255,0.2);
+        }
+        
+        /* 按钮光泽层 */
+        .clay-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 40%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+            border-radius: 20px 20px 50% 50%;
+            pointer-events: none;
+        }
+
+        /* --- 背景漂浮物动画 --- */
+        @keyframes float-y {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        .floating-shape {
+            position: fixed;
+            z-index: 0;
+            animation: float-y 6s ease-in-out infinite;
+            filter: blur(1px);
+        }
+        /* 3D 球体模拟 */
+        .sphere-3d {
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fff 0%, #f0f4f8 40%, #c8d0e7 100%);
+            box-shadow: 
+                15px 15px 30px #c8d0e7,
+                -15px -15px 30px #ffffff,
+                inset 5px 5px 15px rgba(255,255,255,0.8);
+        }
+        /* 3D 甜甜圈模拟 (Torus) */
+        .torus-3d {
+            border-radius: 50%;
+            border: 40px solid #f0f4f8;
+            background: transparent;
+            box-shadow: 
+                20px 20px 40px #c8d0e7,
+                -20px -20px 40px #ffffff,
+                inset 10px 10px 20px #c8d0e7,
+                inset -10px -10px 20px #ffffff;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- 背景装饰 (绝对定位，z-index: 0) -->
+    <div class="sphere-3d w-40 h-40 floating-shape top-10 left-10" style="animation-delay: 0s;"></div>
+    <div class="sphere-3d w-24 h-24 floating-shape bottom-20 right-10" style="animation-delay: 1.5s;"></div>
+    <div class="torus-3d w-64 h-64 floating-shape top-1/2 right-[-50px] opacity-60" style="animation-delay: 3s; border-width: 30px;"></div>
+    <div class="sphere-3d w-16 h-16 floating-shape bottom-10 left-[20%]" style="animation-delay: 4s; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);"></div>
+
+    <!-- UI 主容器 (z-index: 10) -->
+    <div id="root" class="relative z-10 w-full max-w-[440px]"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 气泡 Toast 弹窗 ---
+        const ClayToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ opacity: 0, y: -50, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                // z-index: 100 确保在最上层
+                className={`fixed top-6 left-0 right-0 mx-auto w-fit z-[100] px-6 py-3 rounded-2xl shadow-xl font-bold flex items-center gap-3
+                    ${type === 'error' ? 'bg-[#ff6b6b] text-white' : 'bg-[#51cf66] text-white'}`}
+                style={{
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2), inset 0 2px 5px rgba(255,255,255,0.4)'
+                }}
+            >
+                <div className="bg-white/20 p-1 rounded-full"><i className={type === 'error' ? "ri-close-line" : "ri-check-line"}></i></div>
+                {msg}
+            </motion.div>
+        );
+
+        // --- 黏土输入框组件 ---
+        const Input = ({ label, value, onChange, type="text", icon, rightElem }) => (
+            <div className="mb-6">
+                <label className="block text-sm font-extrabold text-gray-500 mb-2 ml-4">{label}</label>
+                <div className="clay-input-wrapper group">
+                    <div className="text-[#6d5dfc] text-xl mr-3 opacity-60 group-focus-within:opacity-100 transition-opacity">
+                        <i className={icon}></i>
+                    </div>
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="clay-input"
+                        placeholder="Type here..."
+                    />
+                    {rightElem && (
+                        <div className="ml-2">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 黏土按钮组件 ---
+        const Button = ({ children, onClick, loading, variant="primary", className="" }) => (
+            <motion.button
+                whileTap={!loading ? { scale: 0.95 } : {}}
+                whileHover={!loading ? { scale: 1.02 } : {}}
+                onClick={onClick}
+                disabled={loading}
+                className={`clay-btn ${variant === 'primary' ? 'btn-primary' : 'btn-secondary'} w-full py-4 text-lg ${className} ${loading ? 'opacity-80 cursor-wait' : ''}`}
+            >
+                {loading ? (
+                    <div className="flex justify-center gap-2">
+                         <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                         <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-75"></div>
+                         <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-150"></div>
+                    </div>
+                ) : children}
+            </motion.button>
+        );
+
+        // --- 验证码胶囊按钮 ---
+        const CodeBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    px-4 py-2 rounded-xl text-xs font-bold transition-all
+                    ${count > 0 
+                        ? 'bg-gray-200 text-gray-400 shadow-none cursor-not-allowed' 
+                        : 'bg-[#6d5dfc] text-white shadow-lg hover:bg-[#5b4ec9] active:scale-95'}
+                `}
+                style={count === 0 ? { boxShadow: '3px 3px 6px #c8d0e7, -3px -3px 6px #ffffff' } : {}}
+            >
+                {count > 0 ? `${count}s` : 'Get Code'}
+            </button>
+        );
+
+        // --- 页面: 登录 ---
+        const Login = ({ nav, notify }) => {
+            const [form, setForm] = useState({ u: '', p: '' });
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }} 
+                    animate={{ opacity: 1, scale: 1 }} 
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="clay-card p-8 md:p-10"
+                >
+                    <div className="text-center mb-10">
+                        <div className="w-20 h-20 mx-auto mb-4 rounded-[2rem] bg-gradient-to-tr from-[#6d5dfc] to-[#a29bfe] flex items-center justify-center text-white text-4xl shadow-xl">
+                            <i className="ri-chat-smile-2-fill"></i>
+                        </div>
+                        <h1 className="text-3xl font-black text-[#4a4a4a]">Welcome Back</h1>
+                        <p className="text-gray-400 font-bold text-sm mt-1">Sign in to continue</p>
+                    </div>
+
+                    <Input icon="ri-user-smile-line" label="Username" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                    <Input icon="ri-lock-2-line" label="Password" type="password" value={form.p} onChange={e=>setForm({...form, p:e.target.value})} />
+
+                    <div className="flex justify-end mb-8">
+                        <button onClick={()=>nav('reset')} className="text-sm font-bold text-[#6d5dfc] hover:underline decoration-2 decoration-wavy">
+                            Forgot Password?
+                        </button>
+                    </div>
+
+                    <Button onClick={()=>notify('Success! Logging in...')} className="mb-4">Log In</Button>
+                    <Button variant="secondary" onClick={()=>nav('reg')}>Create Account</Button>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 注册 ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ x: 50, opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: -50, opacity: 0 }}
+                    className="clay-card p-8 md:p-10"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 className="text-2xl font-black text-[#4a4a4a]">Hi, Friend!</h2>
+                            <p className="text-gray-400 font-bold text-xs">Let's get you started</p>
+                        </div>
+                        <button onClick={()=>nav('login')} className="w-10 h-10 rounded-full bg-[#f0f4f8] shadow-[5px_5px_10px_#c8d0e7,-5px_-5px_10px_#ffffff] text-gray-500 hover:text-[#6d5dfc] active:shadow-inner flex items-center justify-center transition-colors">
+                            <i className="ri-close-line text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Input icon="ri-user-add-line" label="Username" />
+                        <Input 
+                            icon="ri-mail-send-line" 
+                            label="Email" 
+                            rightElem={<CodeBtn count={count} onClick={()=>{setCount(60);notify('Code Sent!')}} />}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input icon="ri-shield-keyhole-line" label="Code" />
+                            <Input icon="ri-lock-line" label="Pass" type="password" />
+                        </div>
+                    </div>
+
+                    <div className="mt-6">
+                        <Button onClick={()=>{notify('Account Created!');nav('login')}}>Sign Up</Button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 重置 ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ y: 50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }} 
+                    exit={{ y: -50, opacity: 0 }}
+                    className="clay-card p-8 md:p-10 relative overflow-hidden"
+                >
+                    {/* 顶部装饰圆环 */}
+                    <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full border-[20px] border-[#f0f4f8] shadow-[inset_5px_5px_10px_#c8d0e7] opacity-50 pointer-events-none"></div>
+
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-black text-[#4a4a4a]">Recover Account</h2>
+                        <p className="text-gray-400 font-bold text-xs mt-1">Don't worry, it happens!</p>
+                    </div>
+
+                    <Input 
+                        icon="ri-mail-line" 
+                        label="Email Address" 
+                        rightElem={<CodeBtn count={count} onClick={()=>{setCount(60);notify('Code Sent!')}} />}
+                    />
+                    <Input icon="ri-key-2-line" label="Verification Code" />
+                    <Input icon="ri-lock-unlock-line" label="New Password" type="password" />
+
+                    <div className="mt-8 flex gap-4">
+                        <div className="w-1/3">
+                             <Button variant="secondary" onClick={()=>nav('login')}>Back</Button>
+                        </div>
+                        <div className="w-2/3">
+                             <Button onClick={()=>{notify('Password Reset!');nav('login')}}>Reset</Button>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type='success') => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2500);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <ClayToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                    </AnimatePresence>
+
+                    <div className="fixed bottom-4 text-gray-400 font-bold text-xs opacity-60">
+                        Designed with Claymorphism
+                    </div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

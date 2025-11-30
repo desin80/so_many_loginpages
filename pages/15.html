@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steampunk Engine</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 维多利亚风格 / 西部风格字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Rye&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --brass-light: #f5e0a3;
+            --brass-main: #cca458;
+            --brass-dark: #8c6a30;
+            --leather-dark: #2b1d16;
+            --copper: #b87333;
+            --steam: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background-color: #1a1512;
+            color: #dcd0c0;
+            font-family: 'Courier Prime', monospace;
+            overflow: hidden;
+            /* 皮革纹理背景 */
+            background-image: 
+                radial-gradient(circle at 50% 50%, #2b1d16 0%, #0f0a08 100%);
+        }
+
+        /* --- 1. 黄铜金属质感 (CSS Gradient) --- */
+        .brass-plate {
+            background: linear-gradient(135deg, var(--brass-dark) 0%, var(--brass-main) 30%, var(--brass-light) 50%, var(--brass-dark) 100%);
+            border: 2px solid #5a4020;
+            box-shadow: 
+                inset 1px 1px 0 rgba(255,255,255,0.4),
+                inset -1px -1px 0 rgba(0,0,0,0.6),
+                5px 5px 15px rgba(0,0,0,0.6);
+            position: relative;
+        }
+        /* 铆钉装饰 */
+        .rivet {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, #5a4020);
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        /* --- 2. 齿轮动画 --- */
+        .gear-system {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .gear {
+            position: absolute;
+            color: #1f1612;
+            opacity: 0.4;
+            animation: rotate linear infinite;
+        }
+        .gear-fast { animation-duration: 10s; }
+        .gear-slow { animation-duration: 30s; animation-direction: reverse; }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* --- 3. 蒸汽特效 --- */
+        .steam-vent {
+            position: absolute;
+            bottom: -20px; left: 50%;
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: var(--steam);
+            filter: blur(20px);
+            opacity: 0;
+            animation: steam-rise 4s infinite;
+        }
+        @keyframes steam-rise {
+            0% { opacity: 0; transform: translateY(0) scale(1); }
+            20% { opacity: 0.6; }
+            100% { opacity: 0; transform: translateY(-300px) scale(4); }
+        }
+
+        /* --- 4. 机械输入框 --- */
+        .input-gauge {
+            background: #000;
+            border: 4px solid #4a3b2a;
+            border-radius: 4px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            color: #ffcc99; /* 琥珀色文字 */
+            text-shadow: 0 0 2px #ffcc99;
+            font-family: 'Courier Prime', monospace;
+            transition: all 0.3s;
+        }
+        .input-gauge:focus {
+            outline: none;
+            border-color: var(--copper);
+            box-shadow: inset 0 0 15px rgba(184, 115, 51, 0.3);
+        }
+
+        /* --- 5. 液压按钮 --- */
+        .btn-lever {
+            background: linear-gradient(to bottom, #5a4020, #2b1d16);
+            border: 2px solid #8c6a30;
+            color: #e0d0b0;
+            font-family: 'Rye', serif;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 0 #000;
+            box-shadow: 
+                0 4px 0 #1a120b,
+                0 5px 10px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        .btn-lever:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 
+                0 0 0 #1a120b,
+                inset 0 2px 5px rgba(0,0,0,0.8);
+        }
+        .btn-lever:disabled {
+            filter: grayscale(0.8);
+            cursor: not-allowed;
+        }
+
+        /* 字体 */
+        .font-victorian { font-family: 'Rye', serif; }
+
+        /* 压力表指针动画 */
+        .needle {
+            transform-origin: bottom center;
+            transition: transform 0.5s cubic-bezier(0.4, 2.5, 0.6, 0.8); /* 弹性效果 */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 背景齿轮组 -->
+    <div class="gear-system">
+        <i class="ri-settings-5-fill gear gear-slow text-[400px] -top-20 -left-20"></i>
+        <i class="ri-settings-4-fill gear gear-fast text-[200px] top-[40%] right-10"></i>
+        <i class="ri-settings-3-fill gear gear-slow text-[300px] -bottom-20 right-[20%]"></i>
+    </div>
+
+    <!-- 蒸汽层 -->
+    <div class="fixed inset-0 pointer-events-none z-0 flex justify-center items-end opacity-30">
+        <div class="steam-vent" style="animation-delay: 0s; left: 40%;"></div>
+        <div class="steam-vent" style="animation-delay: 1.5s; left: 50%;"></div>
+        <div class="steam-vent" style="animation-delay: 3s; left: 60%;"></div>
+    </div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[480px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 组件: 铆钉框 (HOC) ---
+        const RivetBox = ({ children, className = "" }) => (
+            <div className={`brass-plate p-1 rounded-sm ${className}`}>
+                {/* 四角铆钉 */}
+                <div className="rivet top-1 left-1"></div>
+                <div className="rivet top-1 right-1"></div>
+                <div className="rivet bottom-1 left-1"></div>
+                <div className="rivet bottom-1 right-1"></div>
+                
+                {/* 内层黑底 */}
+                <div className="bg-[#1a1512] h-full w-full border border-[#8c6a30] p-4 relative shadow-inner">
+                    {children}
+                </div>
+            </div>
+        );
+
+        // --- 组件: 压力表 Toast ---
+        const GaugeToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ y: -100, rotate: -5 }}
+                animate={{ y: 0, rotate: 0 }}
+                exit={{ y: -100, rotate: 5 }}
+                className="fixed top-0 left-0 right-0 mx-auto w-fit z-50 pointer-events-none pt-4"
+            >
+                <div className="bg-[#cdb896] border-4 border-[#5a4020] rounded-full px-8 py-2 shadow-2xl flex items-center gap-3 relative">
+                    {/* 挂链 */}
+                    <div className="absolute -top-20 left-4 w-1 h-20 bg-[#333]"></div>
+                    <div className="absolute -top-20 right-4 w-1 h-20 bg-[#333]"></div>
+                    
+                    <div className={`w-3 h-3 rounded-full ${type==='error'?'bg-red-700':'bg-green-700'} border border-black`}></div>
+                    <span className="font-victorian text-[#2b1d16] uppercase text-sm tracking-widest">{msg}</span>
+                </div>
+            </motion.div>
+        );
+
+        // --- 组件: 机械输入框 ---
+        const MechInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-6">
+                <div className="flex justify-between items-end mb-1 pl-1">
+                    <label className="text-[#c9b585] text-xs uppercase tracking-widest font-bold font-victorian text-shadow-sm">
+                        {label}
+                    </label>
+                    {/* 小螺丝 */}
+                    <div className="w-2 h-2 rounded-full bg-[#5a4020] shadow-sm"></div>
+                </div>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-gauge w-full h-12 px-4 text-lg"
+                        placeholder="////////////////////"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-2 top-2 z-10">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 组件: 仪表盘按钮 ---
+        const MeterBtn = ({ onClick, count }) => {
+            // 根据倒计时计算指针角度
+            const rotation = count > 0 ? (60 / 60) * 180 - 90 : -90; 
+            
+            return (
+                <button
+                    type="button"
+                    onClick={onClick}
+                    disabled={count > 0}
+                    className="w-16 h-16 rounded-full bg-[#2b1d16] border-4 border-[#c9b585] relative flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-80"
+                >
+                    {/* 刻度背景 */}
+                    <div className="absolute inset-0 rounded-full border border-white/10"></div>
+                    
+                    {/* 指针 */}
+                    <div className="w-1 h-6 bg-red-600 absolute bottom-[50%] left-[calc(50%-2px)] needle origin-bottom"
+                         style={{ transform: `rotate(${count > 0 ? (60-count)*6 - 90 : -90}deg)` }}>
+                    </div>
+                    <div className="w-2 h-2 bg-black rounded-full absolute z-10"></div>
+                    
+                    <span className="absolute -bottom-6 text-[10px] text-[#c9b585] font-bold w-20 text-center">
+                        {count > 0 ? `${count} PSI` : 'IGNITE'}
+                    </span>
+                </button>
+            );
+        };
+
+        // --- 页面: Login ---
+        const Login = ({ nav, notify }) => {
+            const [loading, setLoading] = useState(false);
+            const [form, setForm] = useState({u:'', p:''});
+
+            const submit = () => {
+                setLoading(true);
+                // 模拟机械启动声
+                setTimeout(() => {
+                    setLoading(false);
+                    notify('Pressure Stabilized. Welcome.');
+                }, 1500);
+            };
+
+            return (
+                <motion.div initial={{y:20, opacity:0}} animate={{y:0, opacity:1}} exit={{y:-20, opacity:0}}>
+                    <RivetBox>
+                        <div className="text-center mb-8 border-b-2 border-[#4a3b2a] pb-4">
+                            <h1 className="font-victorian text-3xl text-[#c9b585] mb-2 drop-shadow-md">SteamLink</h1>
+                            <p className="text-xs text-[#8c6a30] tracking-[0.3em] uppercase">Pneumatic Messaging System</p>
+                        </div>
+
+                        <MechInput label="Operator Name" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                        <MechInput label="Key Cylinder" type="password" value={form.p} onChange={e=>setForm({...form, p:e.target.value})} />
+
+                        <div className="flex justify-between items-center mb-6 text-xs text-[#8c6a30]">
+                             <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 border border-[#8c6a30] bg-black"></div> Lock Valve
+                             </div>
+                             <button onClick={()=>nav('reset')} className="hover:text-[#c9b585] underline decoration-dotted">Repair Key?</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <button onClick={submit} disabled={loading} className="btn-lever w-full py-4 text-xl rounded-sm font-bold tracking-widest">
+                                {loading ? 'PRESSURIZING...' : 'ENGAGE ENGINE'}
+                            </button>
+                            
+                            <div className="flex items-center justify-center gap-2 opacity-50 my-2">
+                                <div className="h-px bg-[#4a3b2a] w-full"></div>
+                                <div className="w-2 h-2 rounded-full border border-[#4a3b2a]"></div>
+                                <div className="h-px bg-[#4a3b2a] w-full"></div>
+                            </div>
+
+                            <button onClick={()=>nav('reg')} className="text-center w-full text-xs text-[#c9b585] uppercase tracking-widest hover:text-white transition-colors">
+                                [ Register New Engineer ]
+                            </button>
+                        </div>
+                    </RivetBox>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{x:50, opacity:0}} animate={{x:0, opacity:1}} exit={{x:-50, opacity:0}}>
+                    <RivetBox>
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="font-victorian text-2xl text-[#c9b585]">New License</h2>
+                                <p className="text-[10px] text-[#8c6a30] uppercase">Issue Date: 1899</p>
+                            </div>
+                            <button onClick={()=>nav('login')} className="text-[#8c6a30] hover:text-[#c9b585] text-xl"><i className="ri-close-fill"></i></button>
+                        </div>
+
+                        <MechInput label="Alias" />
+                        
+                        <div className="flex items-end gap-4 mb-6">
+                            <div className="flex-1 mb-0">
+                                <MechInput label="Telegram (Email)" />
+                            </div>
+                            <div className="pb-8">
+                                <MeterBtn count={count} onClick={()=>{setCount(60);notify('Telegram Sent')}} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <MechInput label="Comb. Code" />
+                            <MechInput label="Secret Key" type="password" />
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-[#4a3b2a]">
+                            <button onClick={()=>{notify('License Issued');nav('login')}} className="btn-lever w-full py-3 rounded-sm font-bold tracking-widest text-sm">
+                                STAMP LICENSE
+                            </button>
+                        </div>
+                    </RivetBox>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{scale:0.9, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.9, opacity:0}}>
+                    <div className="brass-plate p-1 rounded-full w-full aspect-square flex items-center justify-center relative shadow-2xl">
+                        {/* 模拟圆形舱门 */}
+                        <div className="absolute inset-2 border-2 border-dashed border-[#5a4020] rounded-full animate-spin-slow" style={{animationDuration:'60s'}}></div>
+                        
+                        <div className="bg-[#1a1512] w-[90%] h-[90%] rounded-full relative flex flex-col items-center justify-center p-8 text-center border-4 border-[#4a3b2a]">
+                            
+                            <h2 className="font-victorian text-xl text-[#c9b585] mb-4">Emergency<br/>Repair</h2>
+                            
+                            <div className="w-full space-y-4">
+                                <input className="input-gauge w-full h-10 px-2 text-sm text-center" placeholder="Target Address" />
+                                <div className="flex justify-center">
+                                     <MeterBtn count={count} onClick={()=>{setCount(60);notify('Mechanic Dispatched')}} />
+                                </div>
+                                <input className="input-gauge w-full h-10 px-2 text-sm text-center" placeholder="New Cylinder Key" type="password" />
+                            </div>
+
+                            <div className="flex gap-4 mt-6">
+                                <button onClick={()=>nav('login')} className="text-xs text-[#8c6a30] hover:text-white">ABORT</button>
+                                <button onClick={()=>{notify('Repaired');nav('login')}} className="text-xs text-[#c9b585] font-bold hover:text-white border-b border-[#c9b585]">FIX IT</button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type='success') => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 3000);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <GaugeToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <div className="relative w-full flex justify-center perspective-[1000px]">
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* 底部管道装饰 */}
+                    <div className="fixed bottom-0 left-0 w-full h-10 bg-gradient-to-b from-[#5a4020] to-[#2b1d16] border-t border-[#8c6a30]"></div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

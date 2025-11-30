@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phantom Thief</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 漫画风格字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Carter+One&family=Roboto+Condensed:ital,wght@1,700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --p5-red: #d31616;
+            --p5-black: #000000;
+            --p5-white: #ffffff;
+            --p5-gray: #333333;
+        }
+
+        body {
+            background-color: var(--p5-red);
+            font-family: 'Roboto Condensed', sans-serif;
+            overflow: hidden;
+            /* 放射状背景 */
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent 0,
+                transparent 20px,
+                rgba(0,0,0,0.1) 20px,
+                rgba(0,0,0,0.1) 40px
+            );
+        }
+
+        /* --- 1. 半调网点纹理 (Halftone) --- */
+        .halftone-pattern {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(var(--p5-black) 20%, transparent 20%), radial-gradient(var(--p5-black) 20%, transparent 20%);
+            background-color: transparent;
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: 0;
+            animation: bg-slide 20s linear infinite;
+        }
+        @keyframes bg-slide { from { transform: translateY(0); } to { transform: translateY(-100px); } }
+
+        /* --- 2. 不规则锯齿容器 --- */
+        .jagged-box {
+            background: var(--p5-black);
+            color: var(--p5-white);
+            transform: skewX(-10deg) rotate(-2deg);
+            box-shadow: 10px 10px 0 rgba(0,0,0,0.3);
+            border: 4px solid var(--p5-white);
+            position: relative;
+        }
+        /* 装饰用的白色星形 */
+        .jagged-box::after {
+            content: '★';
+            position: absolute;
+            top: -20px; right: -20px;
+            color: var(--p5-white);
+            font-size: 40px;
+            transform: rotate(45deg);
+            text-shadow: 2px 2px 0 black;
+        }
+
+        /* --- 3. 漫画字体 --- */
+        .font-comic { font-family: 'Bangers', cursive; letter-spacing: 2px; }
+        
+        /* --- 4. 动态剪切按钮 --- */
+        .btn-punk {
+            background: var(--p5-white);
+            color: var(--p5-black);
+            font-family: 'Carter One', cursive;
+            text-transform: uppercase;
+            transform: skewX(-15deg);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            border: 3px solid var(--p5-black);
+        }
+        .btn-punk span {
+            display: block;
+            transform: skewX(15deg); /* 文字反向修正 */
+        }
+        .btn-punk:hover {
+            background: var(--p5-black);
+            color: var(--p5-red);
+            transform: skewX(-15deg) scale(1.1) rotate(-3deg);
+            box-shadow: 5px 5px 0 var(--p5-white);
+        }
+        .btn-punk:active { transform: skewX(-15deg) scale(0.95); }
+
+        /* --- 5. 撕裂输入框 --- */
+        .input-punk-wrapper {
+            background: var(--p5-white);
+            padding: 4px;
+            transform: skewX(-10deg);
+            border: 3px solid var(--p5-black);
+            transition: transform 0.3s;
+        }
+        .input-punk-wrapper:focus-within {
+            transform: skewX(-10deg) translateX(-10px) scale(1.05);
+            background: var(--p5-black);
+            border-color: var(--p5-white);
+        }
+        .input-punk {
+            width: 100%;
+            height: 40px;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-weight: 900;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: var(--p5-black);
+            transform: skewX(10deg); /* 文字修正 */
+        }
+        .input-punk-wrapper:focus-within .input-punk {
+            color: var(--p5-white);
+        }
+        .input-punk::placeholder { color: #999; }
+
+        /* --- 6. 装饰性黑条 --- */
+        .black-bar {
+            position: fixed;
+            background: var(--p5-black);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen overflow-hidden">
+
+    <!-- 动态背景纹理 -->
+    <div class="halftone-pattern"></div>
+    
+    <!-- 装饰性背景元素 -->
+    <div class="fixed top-[-100px] left-[-100px] w-[600px] h-[300px] bg-black rotate-[-30deg] z-0"></div>
+    <div class="fixed bottom-[-50px] right-[-50px] w-[800px] h-[200px] bg-white rotate-[-10deg] z-0"></div>
+    
+    <!-- 巨大的背景文字 -->
+    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-comic text-[20vw] text-black opacity-10 rotate-[-15deg] pointer-events-none whitespace-nowrap z-0">
+        TAKE YOUR HEART
+    </div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[460px] p-4"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 漫画对话框 Toast ---
+        const ComicToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ scale: 0, rotate: 20 }}
+                animate={{ scale: 1, rotate: -5 }}
+                exit={{ scale: 0, rotate: -20 }}
+                className="fixed top-20 right-10 z-50 max-w-[200px]"
+            >
+                {/* 爆炸气泡背景 SVG */}
+                <div className="relative">
+                    <svg viewBox="0 0 200 150" className={`w-full h-full drop-shadow-xl ${type==='error' ? 'fill-black' : 'fill-white'}`}>
+                        <path d="M10,75 Q20,60 10,40 Q40,50 60,20 Q70,50 100,30 Q110,60 150,40 Q130,80 180,80 Q140,100 160,130 Q120,110 100,140 Q80,110 40,130 Q50,90 10,75 Z" />
+                    </svg>
+                    <div className={`absolute inset-0 flex items-center justify-center p-6 text-center font-comic text-xl leading-none ${type==='error'?'text-white':'text-black'}`}>
+                        {msg}!!!
+                    </div>
+                </div>
+            </motion.div>
+        );
+
+        // --- 朋克输入框 ---
+        const PunkInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-6 relative">
+                {/* 漂浮的 Label */}
+                <div className="absolute -top-6 left-0 bg-black text-white px-2 py-1 font-comic tracking-wider text-sm rotate-[-3deg] z-10 shadow-lg">
+                    {label}
+                </div>
+                
+                <div className="input-punk-wrapper">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-punk"
+                        placeholder="..."
+                    />
+                    {rightElem && (
+                        <div className="absolute right-2 top-0 h-full flex items-center skew-x-[10deg]">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 朋克按钮 ---
+        const PunkBtn = ({ children, onClick, loading, variant="white" }) => (
+            <button
+                onClick={onClick}
+                disabled={loading}
+                className={`btn-punk w-full py-3 text-2xl shadow-xl ${loading ? 'opacity-80' : ''}`}
+            >
+                <span>{loading ? 'WAIT!' : children}</span>
+            </button>
+        );
+
+        // --- 验证码贴纸 ---
+        const StickerBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    bg-yellow-400 text-black font-comic px-2 py-1 text-sm border-2 border-black rotate-3 hover:scale-110 hover:rotate-12 transition-transform
+                    ${count > 0 ? 'grayscale' : ''}
+                `}
+            >
+                {count > 0 ? `${count}S` : 'GET IT!'}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ x: -300, rotate: -20, opacity: 0 }}
+                    animate={{ x: 0, rotate: 0, opacity: 1 }}
+                    exit={{ x: 300, rotate: 20, opacity: 0 }}
+                    transition={{ type: "spring", bounce: 0.4 }}
+                    className="jagged-box p-8 md:p-10"
+                >
+                    {/* 装饰图钉 */}
+                    <div className="absolute -top-4 left-1/2 w-8 h-8 rounded-full bg-yellow-400 border-4 border-black z-20 shadow-lg"></div>
+
+                    <div className="mb-10 text-center relative">
+                        <h1 className="font-comic text-6xl text-white drop-shadow-[4px_4px_0_#d31616] rotate-[-5deg] inline-block">
+                            LOGIN
+                        </h1>
+                        <div className="absolute -bottom-2 right-10 bg-white text-black text-xs font-bold px-1 rotate-3">
+                            Let's start the game
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <PunkInput label="CODENAME" />
+                        <PunkInput label="SECRET KEY" type="password" />
+                    </div>
+
+                    <div className="flex justify-end mt-4 mb-8">
+                         <button onClick={()=>nav('reset')} className="text-white font-bold bg-black border-2 border-white px-2 text-sm hover:bg-white hover:text-black hover:rotate-3 transition-all">
+                             FORGOT PASS?
+                         </button>
+                    </div>
+
+                    <PunkBtn onClick={()=>notify('WELCOME BACK', 'success')}>PHANTOM ENTER</PunkBtn>
+                    
+                    <div className="mt-8 text-center">
+                        <button onClick={()=>nav('reg')} className="text-xl font-comic text-yellow-400 hover:text-white hover:scale-110 transition-transform underline decoration-wavy decoration-black">
+                            JOIN THE THIEVES (REGISTER)
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ y: 500, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -500, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 150 }}
+                    className="relative"
+                >
+                    {/* 黑色背景卡片 */}
+                    <div className="bg-black border-4 border-white p-8 shadow-[15px_15px_0_rgba(0,0,0,0.4)] transform rotate-2">
+                        <div className="flex justify-between items-center mb-8 border-b-4 border-dashed border-white pb-4">
+                            <h2 className="font-comic text-4xl text-yellow-400 -rotate-2">NEW MEMBER</h2>
+                            <button onClick={()=>nav('login')} className="text-white text-3xl hover:text-red-500 hover:rotate-90 transition-transform">
+                                <i className="ri-close-fill"></i>
+                            </button>
+                        </div>
+
+                        <PunkInput label="ALIAS" />
+                        <PunkInput 
+                            label="CONTACT (EMAIL)" 
+                            rightElem={<StickerBtn count={count} onClick={()=>{setCount(60);notify('SENT!', 'success')}} />}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-8">
+                            <div className="-rotate-2">
+                                <PunkInput label="TOKEN" />
+                            </div>
+                            <div className="rotate-2">
+                                <PunkInput label="PASSWORD" type="password" />
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                            <PunkBtn onClick={()=>{notify('NICE TO MEET YOU', 'success');nav('login')}}>STEAL THE DEAL</PunkBtn>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0, rotate: 180 }}
+                    animate={{ scale: 1, rotate: -3 }}
+                    exit={{ scale: 0, rotate: -180 }}
+                    className="bg-white border-[6px] border-black p-8 max-w-md shadow-2xl relative"
+                >
+                    {/* 撕裂纸张装饰 */}
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white font-comic text-2xl px-4 py-2 rotate-[-5deg] border-2 border-black">
+                        EMERGENCY
+                    </div>
+
+                    <div className="mt-6 mb-8 text-center">
+                        <h2 className="font-bold italic text-3xl bg-yellow-300 inline-block px-2 transform skew-x-[-10deg]">
+                            RECOVER DATA
+                        </h2>
+                    </div>
+
+                    <div className="space-y-8">
+                         <div className="rotate-1">
+                            <PunkInput 
+                                label="TARGET EMAIL" 
+                                rightElem={<StickerBtn count={count} onClick={()=>{setCount(60);notify('GO CHECK IT', 'success')}} />}
+                            />
+                         </div>
+                         <div className="-rotate-1">
+                            <PunkInput label="SECRET CODE" />
+                         </div>
+                         <div className="rotate-1">
+                            <PunkInput label="NEW PASS" type="password" />
+                         </div>
+                    </div>
+
+                    <div className="mt-8 grid grid-cols-2 gap-4">
+                        <button onClick={()=>nav('login')} className="font-comic text-xl border-4 border-black hover:bg-black hover:text-white transition-colors">
+                            CANCEL
+                        </button>
+                        <button onClick={()=>{notify('FIXED IT', 'success');nav('login')}} className="font-comic text-xl bg-red-600 text-white border-4 border-black hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0_black] transition-all">
+                            CHANGE IT
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type) => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2000);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <ComicToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <div className="w-full flex justify-center">
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                        </AnimatePresence>
+                    </div>
+                    
+                    {/* 底部装饰条 */}
+                    <div className="fixed bottom-0 left-0 w-full h-12 bg-black flex items-center overflow-hidden border-t-4 border-white z-50">
+                        <div className="whitespace-nowrap animate-[marquee_5s_linear_infinite] text-white font-comic text-xl tracking-widest">
+                            /// PHANTOM THIEVES OF HEARTS /// TAKE YOUR TIME /// WAKE UP, GET UP, GET OUT THERE /// 
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                    `}</style>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

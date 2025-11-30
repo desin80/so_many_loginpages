@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wasteland Terminal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 经典的打字机/终端字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* 经典的琥珀色配色方案 */
+            --pip-color: #ffb642; 
+            --pip-dim: #b87c24;
+            --pip-bg: #14100a;
+            --pip-dark: #0f0b06;
+            --screen-curve: 20px;
+        }
+
+        body {
+            background-color: #1a1815;
+            color: var(--pip-color);
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* 防止文本被选中，模拟硬件 */
+            user-select: none;
+        }
+
+        /* --- 1. 物理外壳 --- */
+        .pip-boy-casing {
+            background: #3e3832;
+            padding: 30px;
+            border-radius: 40px;
+            box-shadow: 
+                inset 2px 2px 5px rgba(255,255,255,0.1),
+                inset -5px -5px 10px rgba(0,0,0,0.5),
+                10px 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+            border: 2px solid #2a2520;
+        }
+        /* 螺丝装饰 */
+        .screw {
+            position: absolute;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #665c52, #1a1815);
+            border: 1px solid #1a1815;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .screw::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 8px; height: 2px; background: #1a1815;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        /* --- 2. CRT 屏幕容器 --- */
+        .crt-screen {
+            background-color: var(--pip-bg);
+            width: 100%;
+            max-width: 500px;
+            height: 600px;
+            border-radius: 60px / 40px; /* 椭圆曲率 */
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #1a1815;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        /* --- 3. 屏幕特效层 (Scanlines & Flicker) --- */
+        .screen-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            background: 
+                /* 扫描线 */
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                /* 垂直网格线 */
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+            /* 暗角 Vignette */
+            box-shadow: inset 0 0 80px rgba(0,0,0,0.7);
+        }
+        
+        /* 屏幕辉光与闪烁 */
+        .screen-content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            padding: 24px;
+            text-shadow: 0 0 5px var(--pip-dim), 0 0 10px var(--pip-color);
+            overflow-y: auto;
+            /* 隐藏滚动条但保留功能 */
+            scrollbar-width: none; 
+        }
+        .screen-content::-webkit-scrollbar { display: none; }
+
+        /* 全局 flicker 动画 */
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            5% { opacity: 0.85; }
+            10% { opacity: 0.95; }
+            15% { opacity: 1; }
+            50% { opacity: 0.95; }
+            55% { opacity: 0.8; }
+            60% { opacity: 0.95; }
+            100% { opacity: 0.98; }
+        }
+        .flicker-anim {
+            animation: flicker 4s infinite;
+        }
+
+        /* --- 4. UI 元素 --- */
+        
+        /* 顶部 Tab 导航 */
+        .pip-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--pip-color);
+            margin-bottom: 20px;
+            padding-bottom: 5px;
+        }
+        .pip-tab {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .pip-tab.active {
+            opacity: 1;
+            background: rgba(255, 182, 66, 0.2);
+            box-shadow: 0 0 10px var(--pip-dim);
+            font-weight: bold;
+        }
+
+        /* 列表式输入框 */
+        .pip-input-group {
+            border: 1px solid transparent;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .pip-input-group:focus-within {
+            border: 1px solid var(--pip-color);
+            background: rgba(255, 182, 66, 0.05);
+            box-shadow: 0 0 15px var(--pip-dim);
+        }
+        .pip-label {
+            background: var(--pip-color);
+            color: black;
+            padding: 2px 8px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            display: inline-block;
+            text-shadow: none;
+        }
+        .pip-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--pip-color);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.2rem;
+            padding: 8px 12px;
+            outline: none;
+            text-shadow: 0 0 5px var(--pip-dim);
+        }
+        .pip-input::placeholder {
+            color: var(--pip-dim);
+            opacity: 0.5;
+        }
+
+        /* 像素小人动画 */
+        .vault-boy {
+            width: 60px;
+            height: 60px;
+            background: var(--pip-color);
+            mask-image: url('https://upload.wikimedia.org/wikipedia/commons/9/94/Stick_Figure.svg'); /* 简化替代 */
+            mask-size: contain;
+            mask-repeat: no-repeat;
+            mask-position: center;
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+        /* 状态条 */
+        .hp-bar {
+            height: 12px;
+            border: 2px solid var(--pip-color);
+            margin-top: 4px;
+            padding: 1px;
+            position: relative;
+        }
+        .hp-fill {
+            height: 100%;
+            background: var(--pip-color);
+            width: 100%;
+            box-shadow: 0 0 5px var(--pip-color);
+            transition: width 0.3s;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 哔哔小子外壳 -->
+    <div class="pip-boy-casing">
+        <div class="screw top-2 left-2"></div>
+        <div class="screw top-2 right-2"></div>
+        <div class="screw bottom-2 left-2"></div>
+        <div class="screw bottom-2 right-2"></div>
+
+        <!-- 旋钮装饰 -->
+        <div class="absolute -right-8 top-20 w-6 h-12 bg-[#2a2520] rounded-r-lg border border-l-0 border-[#1a1815]"></div>
+        <div class="absolute -right-8 top-36 w-6 h-8 bg-[#2a2520] rounded-r-lg border border-l-0 border-[#1a1815]"></div>
+
+        <!-- 屏幕 -->
+        <div class="crt-screen">
+            <div class="screen-overlay"></div>
+            
+            <div id="root" class="screen-content flicker-anim"></div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 任务完成弹窗 (Quest Style) ---
+        const QuestToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute top-1/2 left-0 right-0 mx-auto w-3/4 z-50 text-center"
+            >
+                <div className="border-t-2 border-b-2 border-[#ffb642] bg-black/80 py-4 mb-2">
+                    <div className="w-16 h-16 mx-auto mb-2 border-2 border-[#ffb642] rounded-full flex items-center justify-center overflow-hidden">
+                        <i className={`text-4xl ${type==='error' ? 'ri-skull-line' : 'ri-trophy-line'}`}></i>
+                    </div>
+                    <div className="text-xl font-bold uppercase tracking-widest mb-1">
+                        {type === 'error' ? 'Quest Failed' : 'Quest Completed'}
+                    </div>
+                    <div className="text-sm opacity-80">{msg}</div>
+                </div>
+                <div className="text-xs uppercase opacity-70 animate-pulse">
+                    [ Press Any Key ]
+                </div>
+            </motion.div>
+        );
+
+        // --- 顶部导航栏 ---
+        const TabBar = ({ active, setPage }) => (
+            <div className="pip-tabs">
+                <div className={`pip-tab ${active==='login'?'active':''}`} onClick={()=>setPage('login')}>STAT</div>
+                <div className={`pip-tab ${active==='reg'?'active':''}`} onClick={()=>setPage('reg')}>SPECIAL</div>
+                <div className={`pip-tab ${active==='reset'?'active':''}`} onClick={()=>setPage('reset')}>PERK</div>
+            </div>
+        );
+
+        // --- 废土输入框 ---
+        const PipInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="pip-input-group">
+                <div className="flex justify-between items-center">
+                    <div className="pip-label">{label}</div>
+                    {rightElem && <div className="pr-2">{rightElem}</div>}
+                </div>
+                <input 
+                    type={type} 
+                    value={value} 
+                    onChange={onChange}
+                    className="pip-input"
+                    placeholder="[ENTER DATA]"
+                    autoComplete="off"
+                />
+            </div>
+        );
+
+        // --- 交互式按钮 ---
+        const PipBtn = ({ children, onClick, loading }) => (
+            <button
+                onClick={onClick}
+                disabled={loading}
+                className="w-full border-2 border-[#ffb642] py-2 mt-4 hover:bg-[#ffb642] hover:text-black hover:font-bold transition-colors uppercase tracking-widest text-lg flex items-center justify-center gap-2 group"
+            >
+                {loading ? (
+                    <span>[ PROCESSING... ]</span>
+                ) : (
+                    <>
+                        <span className="opacity-0 group-hover:opacity-100">></span>
+                        {children}
+                        <span className="opacity-0 group-hover:opacity-100">&lt;</span>
+                    </>
+                )}
+            </button>
+        );
+
+        // --- 页面: Login (STAT) ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="h-full flex flex-col"
+                >
+                    <div className="flex items-center gap-4 mb-6 border-b border-[#b87c24] pb-4">
+                        {/* 简单的像素小人替代图 */}
+                        <div className="w-16 h-16 border border-[#ffb642] p-1 flex items-center justify-center">
+                            <i className="ri-user-smile-line text-4xl"></i>
+                        </div>
+                        <div className="flex-1">
+                            <div className="text-xl font-bold">USER LOGIN</div>
+                            <div className="text-xs opacity-70">LEVEL 1 • WAITING FOR INPUT</div>
+                            <div className="hp-bar w-full"><div className="hp-fill" style={{width: '100%'}}></div></div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto">
+                        <PipInput label="USERNAME" />
+                        <PipInput label="PASSWORD" type="password" />
+                        
+                        <div className="mt-4 text-xs flex justify-between px-2 opacity-70">
+                             <span>STATUS: DISCONNECTED</span>
+                             <button onClick={()=>nav('reset')} className="hover:text-white underline">FORGOT KEY?</button>
+                        </div>
+                    </div>
+
+                    <div className="mt-auto pt-4">
+                        <PipBtn onClick={()=>notify('ACCESS GRANTED', 'success')}>INITIALIZE</PipBtn>
+                        <div className="text-center mt-2 text-[10px] opacity-50">VAULT-TEC INDUSTRIES © 2077</div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register (SPECIAL) ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="mb-4 text-center border-b border-[#b87c24] pb-2">
+                        <div className="text-lg font-bold">NEW DWELLER REGISTRATION</div>
+                        <div className="text-xs">ASSIGN SPECIAL ATTRIBUTES</div>
+                    </div>
+
+                    <PipInput label="NAME" />
+                    <PipInput 
+                        label="RADIO FREQ (EMAIL)" 
+                        rightElem={<button onClick={()=>setCount(60)} disabled={count>0} className="text-xs border border-[#ffb642] px-1 hover:bg-[#ffb642] hover:text-black">{count>0?count:'PING'}</button>}
+                    />
+                    
+                    <div className="flex gap-2 mt-2">
+                        <div className="w-1/3"><PipInput label="CODE" /></div>
+                        <div className="w-2/3"><PipInput label="SECRET" type="password" /></div>
+                    </div>
+
+                    <div className="border border-[#ffb642] p-2 mt-4 text-xs opacity-80">
+                        <div className="flex justify-between"><span>STRENGTH</span> <span>[|||||  ]</span></div>
+                        <div className="flex justify-between"><span>PERCEPTION</span> <span>[||||   ]</span></div>
+                        <div className="flex justify-between"><span>LUCK</span> <span>[|||||||]</span></div>
+                    </div>
+
+                    <PipBtn onClick={()=>{notify('ID CREATED', 'success');nav('login')}}>CONFIRM</PipBtn>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset (PERK) ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="mb-6 flex gap-4">
+                         <i className="ri-tools-line text-4xl animate-pulse"></i>
+                         <div>
+                             <div className="font-bold text-xl">SYSTEM REPAIR</div>
+                             <div className="text-xs">RESTORE CORRUPTED DATA</div>
+                         </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <PipInput 
+                            label="TARGET LINK" 
+                            rightElem={<i className="ri-signal-tower-line"></i>}
+                        />
+                        <div className="flex justify-end">
+                            <button onClick={()=>setCount(60)} disabled={count>0} className="text-xs border border-[#ffb642] px-2 py-1 hover:bg-[#ffb642] hover:text-black">
+                                {count>0 ? `COOLDOWN ${count}` : 'SEND REPAIR BOT'}
+                            </button>
+                        </div>
+
+                        <PipInput label="AUTH TOKEN" />
+                        <PipInput label="NEW KEY" type="password" />
+                    </div>
+
+                    <div className="mt-8">
+                         <PipBtn onClick={()=>{notify('REPAIRED', 'success');nav('login')}}>EXECUTE FIX</PipBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type) => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2500);
+            };
+
+            return (
+                <div className="h-full flex flex-col">
+                    <TabBar active={page} setPage={setPage} />
+                    
+                    <div className="flex-1 relative">
+                        <AnimatePresence>
+                            {toast && <QuestToast msg={toast.msg} type={toast.type} />}
+                        </AnimatePresence>
+
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* 底部文字跑马灯 */}
+                    <div className="mt-2 border-t border-[#b87c24] pt-1 overflow-hidden whitespace-nowrap">
+                         <div className="text-xs animate-[marquee_10s_linear_infinite] opacity-70">
+                             /// STATUS: RADIATION LEVEL NORMAL /// SERVER CONNECTION: ONLINE /// HAVE A NICE DAY IN THE WASTELAND ///
+                         </div>
+                    </div>
+                    <style>{`@keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }`}</style>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
