@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TACTICAL PROTOCOL</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 战术风格字体: Oswald (替代 Tungsten) -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --val-red: #ff4655;
+            --val-dark: #0f1923;
+            --val-white: #ece8e1;
+            --val-gray: #8b9bb4;
+        }
+
+        body {
+            background-color: var(--val-dark);
+            color: var(--val-white);
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- 1. 战术地图背景 --- */
+        .map-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        /* 大型的装饰文字 */
+        .bg-text {
+            position: fixed;
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            color: rgba(255,255,255,0.02);
+            font-size: 40vh;
+            line-height: 0.8;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- 2. 切角卡片 (Cut Corner) --- */
+        .cut-card {
+            background: rgba(236, 232, 225, 0.05); /* 半透明白 */
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            /* 右上和左下切角 */
+            clip-path: polygon(
+                20px 0, 100% 0, 
+                100% calc(100% - 20px), calc(100% - 20px) 100%, 
+                0 100%, 0 20px
+            );
+            position: relative;
+        }
+        /* 装饰用的红色方块 */
+        .cut-card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 20px; height: 20px;
+            background: var(--val-red);
+            clip-path: polygon(0 0, 100% 0, 100% 100%);
+        }
+
+        /* --- 3. 字体 --- */
+        .font-tactical { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+
+        /* --- 4. 战术输入框 --- */
+        .input-tactical-wrapper {
+            position: relative;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        .input-tactical-wrapper:hover {
+            border-color: rgba(255,255,255,0.5);
+        }
+        .input-tactical-wrapper:focus-within {
+            border-color: var(--val-white);
+            background: rgba(0,0,0,0.5);
+        }
+        /* 聚焦时的左侧红条 */
+        .input-tactical-wrapper::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 4px;
+            background: var(--val-red);
+            transform: scaleY(0);
+            transition: transform 0.2s ease-out;
+        }
+        .input-tactical-wrapper:focus-within::before {
+            transform: scaleY(1);
+        }
+
+        .input-tactical {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            padding: 12px 16px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .input-tactical::placeholder {
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+        }
+
+        /* --- 5. 战术按钮 --- */
+        .btn-tactical {
+            background: var(--val-white);
+            color: var(--val-dark);
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            /* 按钮也是切角 */
+            clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+            transition: transform 0.1s;
+        }
+        /* 红色滑动遮罩 */
+        .btn-tactical::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--val-red);
+            transform: translateX(-105%);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+        .btn-tactical:hover::before {
+            transform: translateX(0);
+        }
+        .btn-tactical span {
+            position: relative;
+            z-index: 1;
+            transition: color 0.2s;
+        }
+        .btn-tactical:hover span {
+            color: white;
+        }
+        .btn-tactical:active {
+            transform: scale(0.98);
+        }
+
+        /* 描边按钮 (次要) */
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+        .btn-outline:hover {
+            border-color: var(--val-white);
+            background: rgba(255,255,255,0.05);
+        }
+        .btn-outline::before { display: none; } /* 移除红色遮罩 */
+
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 背景装饰 -->
+    <div class="map-bg"></div>
+    <div class="bg-text">PROTOCOL</div>
+
+    <!-- 装饰性准星 -->
+    <div class="fixed top-10 left-10 w-4 h-4 border-t border-l border-white/30"></div>
+    <div class="fixed top-10 right-10 w-4 h-4 border-t border-r border-white/30"></div>
+    <div class="fixed bottom-10 left-10 w-4 h-4 border-b border-l border-white/30"></div>
+    <div class="fixed bottom-10 right-10 w-4 h-4 border-b border-r border-white/30"></div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[460px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 战术通知 ---
+        const TacToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                className="fixed top-20 right-0 z-50 flex"
+            >
+                <div className={`h-12 w-1 ${type==='error'?'bg-red-500':'bg-white'}`}></div>
+                <div className="bg-[#0f1923]/90 backdrop-blur border-l border-white/20 pl-4 pr-8 py-2 flex flex-col justify-center min-w-[200px] shadow-lg">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">System Notification</span>
+                    <span className="text-white font-tactical text-lg leading-none mt-1 uppercase">{msg}</span>
+                </div>
+            </motion.div>
+        );
+
+        // --- 战术输入框 ---
+        const TacInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-5">
+                <div className="flex justify-between items-end mb-1">
+                    <label className="font-tactical text-sm text-gray-400 tracking-wider uppercase">{label}</label>
+                </div>
+                <div className="input-tactical-wrapper">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-tactical"
+                        placeholder="///"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-0 top-0 h-full flex items-center pr-2">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 战术按钮 ---
+        const TacBtn = ({ children, onClick, loading, variant="primary" }) => (
+            <button
+                onClick={onClick}
+                disabled={loading}
+                className={`btn-tactical w-full h-12 text-lg ${variant==='outline' ? 'btn-outline' : ''}`}
+            >
+                <span>{loading ? 'PROCESSING...' : children}</span>
+            </button>
+        );
+
+        // --- 验证码方块 ---
+        const CodeSquare = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className="h-8 px-3 bg-[#ffffff10] border border-white/20 text-xs font-bold text-white hover:bg-white hover:text-black transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-white"
+            >
+                {count > 0 ? `WAIT ${count}` : 'GET'}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, x: -20 }} 
+                    animate={{ opacity: 1, x: 0 }} 
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="cut-card p-8 md:p-10"
+                >
+                    {/* 头部 */}
+                    <div className="mb-8 border-l-4 border-[#ff4655] pl-4">
+                        <h1 className="font-tactical text-5xl leading-[0.9]">AGENT<br/>LOGIN</h1>
+                        <p className="text-xs text-gray-400 mt-2 font-bold tracking-[0.2em] uppercase">Secure Connection Uplink</p>
+                    </div>
+
+                    <TacInput label="Riot ID / Username" />
+                    <TacInput label="Password" type="password" />
+
+                    <div className="flex justify-between items-center mb-8 mt-2">
+                         <div className="flex items-center gap-2 opacity-60 hover:opacity-100 cursor-pointer">
+                             <div className="w-3 h-3 border border-white bg-transparent"></div>
+                             <span className="text-xs font-bold uppercase">Remember</span>
+                         </div>
+                         <button onClick={()=>nav('reset')} className="text-xs font-bold uppercase text-[#ff4655] hover:text-white transition-colors">
+                             Recover Account
+                         </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        <TacBtn onClick={()=>notify('IDENTITY CONFIRMED')}>Lock In</TacBtn>
+                        <TacBtn variant="outline" onClick={()=>nav('reg')}>New Agent</TacBtn>
+                    </div>
+
+                    {/* 底部装饰 */}
+                    <div className="mt-8 flex justify-between items-end opacity-30">
+                        <div className="h-1 w-12 bg-white"></div>
+                        <div className="text-[10px] font-mono">V.2.04</div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: -20 }}
+                    className="cut-card p-8 md:p-10"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 className="font-tactical text-3xl">RECRUIT</h2>
+                            <span className="text-[10px] bg-white text-black px-1 font-bold">NEW ENTRY</span>
+                        </div>
+                        <button onClick={()=>nav('login')} className="w-8 h-8 border border-white/30 flex items-center justify-center hover:bg-[#ff4655] hover:border-[#ff4655] transition-colors">
+                            <i className="ri-close-line"></i>
+                        </button>
+                    </div>
+
+                    <TacInput label="Callsign (ID)" />
+                    <TacInput 
+                        label="Comm Freq (Email)" 
+                        rightElem={<CodeSquare count={count} onClick={()=>{setCount(60);notify('SIGNAL SENT')}} />}
+                    />
+                    
+                    <div className="flex gap-4">
+                        <div className="w-1/3"><TacInput label="Token" /></div>
+                        <div className="w-2/3"><TacInput label="Secret" type="password" /></div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                        <TacBtn onClick={()=>{notify('AGENT CREATED');nav('login')}}>Confirm</TacBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="cut-card p-8 md:p-10"
+                >
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 mx-auto border border-white/20 flex items-center justify-center mb-4 rotate-45">
+                            <i className="ri-lock-2-fill text-2xl -rotate-45 text-[#ff4655]"></i>
+                        </div>
+                        <h2 className="font-tactical text-3xl">RECOVERY</h2>
+                    </div>
+
+                    <TacInput 
+                        label="Target Link" 
+                        rightElem={<CodeSquare count={count} onClick={()=>{setCount(60);notify('LINK SENT')}} />}
+                    />
+                    <TacInput label="Access Code" />
+                    <TacInput label="New Password" type="password" />
+
+                    <div className="grid grid-cols-2 gap-4 mt-8">
+                        <TacBtn variant="outline" onClick={()=>nav('login')}>Cancel</TacBtn>
+                        <TacBtn onClick={()=>{notify('UPDATED');nav('login')}}>Update</TacBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type) => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2500);
+            };
+
+            return (
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                    <AnimatePresence>
+                        {toast && <TacToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                    </AnimatePresence>
+                    
+                    {/* 底部版权 */}
+                    <div className="fixed bottom-6 left-0 w-full text-center opacity-30 text-[10px] font-tactical tracking-[0.2em]">
+                        // RIOT PROTOCOL // SECURE CHANNEL
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

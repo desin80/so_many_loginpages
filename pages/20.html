@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE MANIFESTO</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 强有力的工业字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Staatliches&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bru-bg: #f2e8dc;    /* 米黄纸张 */
+            --bru-red: #cc3333;   /* 宣传红 */
+            --bru-black: #1a1a1a; /* 工业黑 */
+            --bru-border: 4px;
+        }
+
+        body {
+            background-color: var(--bru-red);
+            color: var(--bru-black);
+            font-family: 'Oswald', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        /* --- 1. 印刷噪点纹理 --- */
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 50;
+            mix-blend-mode: multiply;
+        }
+
+        /* --- 2. 放射背景 --- */
+        .sunburst {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 200vmax; height: 200vmax;
+            background: repeating-conic-gradient(
+                from 0deg,
+                var(--bru-bg) 0deg 15deg,
+                transparent 15deg 30deg
+            );
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            animation: rotate-bg 60s linear infinite;
+        }
+        @keyframes rotate-bg { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        /* --- 3. 粗野主义卡片 --- */
+        .poster-card {
+            background: var(--bru-bg);
+            border: var(--bru-border) solid var(--bru-black);
+            box-shadow: 15px 15px 0 var(--bru-black);
+            position: relative;
+        }
+        /* 内部装饰线 */
+        .deco-lines {
+            background-image: linear-gradient(var(--bru-black) 1px, transparent 1px);
+            background-size: 100% 4px;
+            height: 12px;
+            width: 100%;
+            opacity: 0.3;
+            margin: 10px 0;
+        }
+
+        /* --- 4. 字体排版 --- */
+        .font-headline { font-family: 'Anton', sans-serif; letter-spacing: 1px; line-height: 0.9; }
+        .font-label { font-family: 'Staatliches', cursive; letter-spacing: 2px; }
+
+        /* --- 5. 暴力输入框 --- */
+        .input-brutalist {
+            background: transparent;
+            border: var(--bru-border) solid var(--bru-black);
+            color: var(--bru-black);
+            font-weight: 700;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.25rem;
+            transition: all 0.1s;
+        }
+        .input-brutalist:focus {
+            background: var(--bru-black);
+            color: var(--bru-bg);
+            outline: none;
+            transform: translate(-4px, -4px);
+            box-shadow: 4px 4px 0 var(--bru-red);
+        }
+        .input-brutalist::placeholder {
+            color: rgba(26, 26, 26, 0.4);
+            text-transform: uppercase;
+        }
+
+        /* --- 6. 宣传按钮 --- */
+        .btn-propaganda {
+            background: var(--bru-red);
+            color: var(--bru-bg);
+            border: var(--bru-border) solid var(--bru-black);
+            font-family: 'Anton', sans-serif;
+            font-size: 1.5rem;
+            position: relative;
+            transition: all 0.1s;
+        }
+        .btn-propaganda:hover {
+            background: var(--bru-black);
+            color: var(--bru-bg);
+        }
+        .btn-propaganda:active {
+            transform: translate(4px, 4px);
+            box-shadow: none !important;
+        }
+        
+        /* 邮票/印章动画 */
+        @keyframes stamp-in {
+            0% { transform: scale(3) rotate(20deg); opacity: 0; }
+            100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+        }
+        .stamp {
+            animation: stamp-in 0.2s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 纹理层 -->
+    <div class="noise-overlay"></div>
+
+    <!-- 背景放射 -->
+    <div class="sunburst"></div>
+
+    <!-- 巨大的背景字 (装饰) -->
+    <div class="fixed top-0 left-0 w-full h-full flex flex-col justify-between pointer-events-none z-0 p-4 opacity-10">
+        <h1 class="font-headline text-[15vw] leading-none text-black">POWER</h1>
+        <h1 class="font-headline text-[15vw] leading-none text-black text-right">ORDER</h1>
+    </div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[480px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 盖章式通知 ---
+        const StampToast = ({ msg, type }) => (
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+                <div className={`stamp border-[6px] px-8 py-4 text-4xl font-headline tracking-widest uppercase mix-blend-multiply
+                    ${type === 'error' ? 'border-black text-black' : 'border-[#cc3333] text-[#cc3333]'}`}
+                    style={{
+                        maskImage: 'url("https://www.transparenttextures.com/patterns/black-linen.png")' // 模拟印泥缺损
+                    }}
+                >
+                    {msg}
+                </div>
+            </div>
+        );
+
+        // --- 粗野输入框 ---
+        const BruInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-6">
+                <label className="block font-label text-xl mb-1 bg-black text-[#f2e8dc] inline-block px-2 transform -rotate-1">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-brutalist w-full h-14 px-4"
+                        placeholder="REQUIRED_FIELD"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-0 top-0 h-full flex">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 粗野按钮 ---
+        const BruBtn = ({ children, onClick, loading, variant="primary" }) => {
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={loading}
+                    className={`btn-propaganda w-full py-4 tracking-widest shadow-[8px_8px_0_black] ${variant==='secondary' ? 'bg-white text-black' : ''}`}
+                >
+                    {loading ? 'PROCESSING...' : children}
+                </button>
+            );
+        };
+
+        // --- 验证码块 ---
+        const CodeBlock = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className="h-full border-l-4 border-black px-4 font-bold bg-[#f2e8dc] hover:bg-[#cc3333] hover:text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+            >
+                {count > 0 ? count : 'GET'}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ y: 50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }} 
+                    exit={{ y: -50, opacity: 0 }}
+                    className="poster-card p-6 md:p-8"
+                >
+                    {/* 头部装饰 */}
+                    <div className="flex justify-between items-start border-b-4 border-black pb-4 mb-6">
+                        <div>
+                            <h1 className="font-headline text-5xl text-[#cc3333]">AUTHENTICATE</h1>
+                            <p className="font-bold text-sm tracking-widest mt-1">THE COLLECTIVE AWAITS</p>
+                        </div>
+                        <i className="ri-star-fill text-5xl text-black"></i>
+                    </div>
+
+                    <BruInput label="IDENTITY CODE" />
+                    <BruInput label="ACCESS PASS" type="password" />
+
+                    <div className="deco-lines"></div>
+
+                    <div className="flex justify-between mb-6 font-bold text-sm">
+                        <div className="flex items-center gap-2">
+                             <div className="w-4 h-4 bg-black"></div> REMEMBER
+                        </div>
+                        <button onClick={()=>nav('reset')} className="underline decoration-4 decoration-[#cc3333] hover:bg-[#cc3333] hover:text-white px-1">
+                            LOST KEY?
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <BruBtn onClick={()=>notify('APPROVED')}>ENTER SYSTEM</BruBtn>
+                        <BruBtn variant="secondary" onClick={()=>nav('reg')}>ENLIST NOW</BruBtn>
+                    </div>
+
+                    <div className="mt-4 text-center text-xs font-bold opacity-60">
+                        OFFICIAL COMMUNICATION CHANNEL // V.1.0
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ x: 100, opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: -100, opacity: 0 }}
+                    className="poster-card p-6 md:p-8"
+                >
+                    <div className="bg-black text-[#f2e8dc] p-4 -mx-6 -mt-6 mb-8 flex justify-between items-center">
+                        <h2 className="font-headline text-4xl">ENLISTMENT</h2>
+                        <button onClick={()=>nav('login')} className="bg-[#cc3333] w-10 h-10 border-2 border-[#f2e8dc] flex items-center justify-center hover:bg-white hover:text-black">
+                            <i className="ri-close-fill text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                        <BruInput label="DESIGNATION" />
+                        <BruInput 
+                            label="FREQUENCY" 
+                            rightElem={<CodeBlock count={count} onClick={()=>{setCount(60);notify('DISPATCHED')}} />}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                             <BruInput label="TOKEN" />
+                             <BruInput label="SECRET" type="password" />
+                        </div>
+                    </div>
+
+                    <div className="mt-4">
+                        <BruBtn onClick={()=>{notify('RECRUITED');nav('login')}}>JOIN THE CAUSE</BruBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="poster-card p-6 md:p-8 border-t-[20px] border-t-[#cc3333]"
+                >
+                    <div className="text-center mb-8">
+                        <h2 className="font-headline text-5xl">RECOVERY</h2>
+                        <div className="w-full h-1 bg-black mt-2"></div>
+                        <p className="font-bold mt-2">RESTORE ACCESS PROTOCOLS</p>
+                    </div>
+
+                    <BruInput 
+                        label="TARGET FREQ" 
+                        rightElem={<CodeBlock count={count} onClick={()=>{setCount(60);notify('SENT')}} />}
+                    />
+                    <BruInput label="AUTH TOKEN" />
+                    <BruInput label="NEW SECRET" type="password" />
+
+                    <div className="grid grid-cols-2 gap-4 mt-8">
+                        <button onClick={()=>nav('login')} className="border-4 border-black py-3 font-bold hover:bg-black hover:text-[#f2e8dc]">CANCEL</button>
+                        <button onClick={()=>{notify('RESTORED');nav('login')}} className="bg-[#cc3333] text-white border-4 border-black py-3 font-bold hover:translate-x-1 hover:translate-y-1 shadow-[4px_4px_0_black] hover:shadow-none transition-all">
+                            CONFIRM
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type='success') => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2000);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <StampToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                    </AnimatePresence>
+                    
+                    {/* 底部跑马灯 */}
+                    <div className="fixed bottom-0 left-0 w-full bg-black text-[#f2e8dc] py-2 border-t-4 border-[#cc3333] overflow-hidden z-20">
+                         <div className="whitespace-nowrap animate-[marquee_10s_linear_infinite] font-headline tracking-widest text-xl">
+                             /// STRENGTH IN UNITY /// OBEY THE PROTOCOL /// SECURE YOUR DATA /// THE COLLECTIVE IS WATCHING ///
+                         </div>
+                    </div>
+                    <style>{`@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
