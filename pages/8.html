@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Bauhaus Art</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 几何感极强的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bauhaus-bg: #f4f1ea;
+            --bauhaus-red: #d93025;
+            --bauhaus-blue: #1a4b8c;
+            --bauhaus-yellow: #ebb92e;
+            --bauhaus-black: #1a1a1a;
+        }
+
+        body {
+            background-color: var(--bauhaus-bg);
+            color: var(--bauhaus-black);
+            font-family: 'League Spartan', sans-serif;
+            overflow: hidden;
+            /* 印刷纸张纹理 */
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
+        }
+
+        /* 混合模式：模拟油墨叠加 */
+        .multiply-mode {
+            mix-blend-mode: multiply;
+        }
+
+        /* 几何装饰形状 */
+        .shape {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .shape-circle {
+            border-radius: 50%;
+        }
+        .shape-half-circle {
+            border-top-left-radius: 500px;
+            border-top-right-radius: 500px;
+        }
+
+        /* 输入框样式 */
+        .bauhaus-input {
+            background: transparent;
+            border-bottom: 4px solid var(--bauhaus-black);
+            font-weight: 700;
+            color: var(--bauhaus-black);
+            transition: all 0.3s ease;
+        }
+        .bauhaus-input:focus {
+            background: rgba(235, 185, 46, 0.2); /* 黄色背景 */
+            outline: none;
+            padding-left: 10px;
+            border-bottom-color: var(--bauhaus-blue);
+        }
+        .bauhaus-input::placeholder {
+            color: rgba(26, 26, 26, 0.4);
+            font-weight: 300;
+        }
+
+        /* 标题排版 */
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        /* 粗网格线 */
+        .grid-line {
+            background-color: var(--bauhaus-black);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 巨大的背景几何体 (Canvas-like composition) -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <!-- 左上大红圆 -->
+        <div class="shape shape-circle w-[400px] h-[400px] bg-[#d93025] -top-20 -left-20 multiply-mode opacity-90"></div>
+        <!-- 右下大蓝半圆 -->
+        <div class="shape w-[600px] h-[300px] bg-[#1a4b8c] bottom-0 right-0 multiply-mode opacity-90 rounded-tl-full"></div>
+        <!-- 穿越的黄色长条 -->
+        <div class="shape w-[120%] h-[40px] bg-[#ebb92e] top-[30%] -left-[10%] rotate-[-15deg] multiply-mode opacity-80"></div>
+        <!-- 细黑线网格 -->
+        <div class="shape w-px h-full bg-black left-[25%] top-0 opacity-20"></div>
+        <div class="shape w-full h-px bg-black top-[75%] left-0 opacity-20"></div>
+    </div>
+
+    <!-- UI 主容器 -->
+    <div id="root" class="relative z-10 w-full max-w-[900px] min-h-[550px] p-4 flex items-center justify-center"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 几何按钮 ---
+        const BauhausBtn = ({ children, onClick, loading, color="blue" }) => {
+            const bgColors = {
+                blue: "bg-[#1a4b8c] text-white",
+                red: "bg-[#d93025] text-white",
+                yellow: "bg-[#ebb92e] text-black"
+            };
+
+            return (
+                <motion.button
+                    whileHover={{ scale: 1.05, x: 5, y: -5 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onClick}
+                    disabled={loading}
+                    className={`
+                        w-full h-16 text-xl font-black uppercase tracking-wider relative
+                        ${bgColors[color]}
+                        shadow-[8px_8px_0px_0px_rgba(26,26,26,1)]
+                        transition-all border-2 border-black
+                    `}
+                >
+                    {loading ? (
+                        <div className="flex justify-center gap-2">
+                            <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
+                            <div className="w-3 h-3 bg-white rounded-none animate-bounce delay-100"></div>
+                            <div className="w-3 h-3 bg-white rotate-45 animate-bounce delay-200"></div>
+                        </div>
+                    ) : children}
+                </motion.button>
+            );
+        };
+
+        // --- 几何输入框 ---
+        const BauhausInput = ({ label, type="text", value, onChange, rightElem }) => (
+            <div className="mb-6">
+                <label className="block text-xl font-black uppercase mb-1 flex items-center gap-2">
+                    <span className="w-3 h-3 bg-black"></span>
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="bauhaus-input w-full h-12 text-lg"
+                        placeholder="///"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-0 bottom-2 z-10">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 验证码圆形按钮 ---
+        const CircleBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    w-12 h-12 rounded-full border-2 border-black flex items-center justify-center font-bold text-xs transition-transform hover:rotate-90
+                    ${count > 0 ? 'bg-gray-200 text-gray-500' : 'bg-[#ebb92e] text-black'}
+                `}
+            >
+                {count > 0 ? count : 'GO'}
+            </button>
+        );
+
+        // --- 页面: 登录 ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ x: -50, opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: 50, opacity: 0 }}
+                    className="w-full flex flex-col md:flex-row bg-white border-4 border-black shadow-[15px_15px_0px_0px_rgba(217,48,37,1)]"
+                >
+                    {/* 左侧：艺术字 */}
+                    <div className="w-full md:w-1/3 bg-[#f4f1ea] border-b-4 md:border-b-0 md:border-r-4 border-black p-8 flex flex-col justify-center items-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-4 bg-black"></div>
+                        <div className="absolute bottom-0 right-0 w-full h-4 bg-black"></div>
+                        <h1 className="text-8xl font-black leading-none tracking-tighter mix-blend-multiply text-[#1a4b8c] rotate-90 md:rotate-0">
+                            LOG<br/>IN.
+                        </h1>
+                        <div className="w-16 h-16 rounded-full bg-[#ebb92e] mt-4 border-2 border-black"></div>
+                    </div>
+
+                    {/* 右侧：表单 */}
+                    <div className="w-full md:w-2/3 p-8 md:p-12 bg-white">
+                        <BauhausInput label="Identity" />
+                        <BauhausInput label="Secret" type="password" />
+                        
+                        <div className="flex justify-between items-center mb-8">
+                             <div className="flex gap-2">
+                                 <div className="w-4 h-4 border-2 border-black bg-[#d93025]"></div>
+                                 <span className="text-sm font-bold">REMEMBER</span>
+                             </div>
+                             <button onClick={()=>nav('reset')} className="font-bold underline decoration-4 decoration-[#ebb92e] hover:bg-[#ebb92e]">FORGOT?</button>
+                        </div>
+
+                        <BauhausBtn onClick={()=>notify('ACCESS GRANTED')} color="blue">ENTER SYSTEM</BauhausBtn>
+                        
+                        <div className="mt-4 text-center">
+                             <button onClick={()=>nav('reg')} className="text-sm font-bold uppercase tracking-widest hover:text-[#d93025] transition-colors">
+                                 &rarr; Create New Account &larr;
+                             </button>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 注册 ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ y: 50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }} 
+                    exit={{ y: -50, opacity: 0 }}
+                    className="w-full max-w-2xl bg-[#f4f1ea] border-4 border-black p-0 relative shadow-[15px_15px_0px_0px_#1a4b8c]"
+                >
+                    {/* 顶部标题栏 */}
+                    <div className="bg-black text-white p-4 flex justify-between items-center">
+                        <h2 className="text-3xl font-black uppercase tracking-widest">Construct<br/><span className="text-[#ebb92e]">Identity</span></h2>
+                        <button onClick={()=>nav('login')} className="w-10 h-10 bg-white text-black flex items-center justify-center font-black hover:bg-[#d93025] hover:text-white transition-colors">X</button>
+                    </div>
+
+                    <div className="p-8 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="col-span-1">
+                             <BauhausInput label="Alias" />
+                             <BauhausInput 
+                                label="Contact" 
+                                rightElem={<CircleBtn count={count} onClick={()=>{setCount(60);notify('CODE SENT')}} />}
+                             />
+                             <BauhausInput label="Code" />
+                         </div>
+                         <div className="col-span-1 bg-white border-2 border-black p-4 rotate-2 shadow-[5px_5px_0_0_black]">
+                             <h3 className="font-bold mb-4 uppercase border-b-2 border-black inline-block">Security</h3>
+                             <BauhausInput label="Pass" type="password" />
+                             <BauhausInput label="Confirm" type="password" />
+                         </div>
+                    </div>
+
+                    <div className="p-4 border-t-4 border-black">
+                        <BauhausBtn onClick={()=>{notify('CREATED');nav('login')}} color="red">BUILD ACCOUNT</BauhausBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 重置 ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="w-full max-w-lg bg-white border-4 border-black relative"
+                >
+                    {/* 装饰色块 */}
+                    <div className="absolute -top-4 -left-4 w-full h-full border-4 border-[#ebb92e] bg-transparent pointer-events-none z-0"></div>
+                    
+                    <div className="relative z-10 p-8">
+                        <h2 className="text-6xl font-black mb-8 text-[#d93025] leading-none">RE<br/>SET.</h2>
+                        
+                        <div className="space-y-2">
+                             <BauhausInput 
+                                label="Target" 
+                                rightElem={<CircleBtn count={count} onClick={()=>{setCount(60);notify('SENT')}} />}
+                             />
+                             <BauhausInput label="Key" />
+                             <BauhausInput label="New Secret" type="password" />
+                        </div>
+
+                        <div className="mt-8 grid grid-cols-2 gap-4">
+                             <button onClick={()=>nav('login')} className="h-16 border-2 border-black font-black uppercase hover:bg-gray-100">Cancel</button>
+                             <BauhausBtn onClick={()=>{notify('UPDATED');nav('login')}} color="yellow">Update</BauhausBtn>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主程序 ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            
+            // 简单的通知条
+            const notify = (msg) => {
+                const el = document.createElement('div');
+                el.className = "fixed top-0 left-0 w-full h-16 bg-[#1a1a1a] text-white flex items-center justify-center font-black text-2xl z-50 transform -translate-y-full transition-transform duration-300";
+                el.innerText = `/// ${msg} ///`;
+                document.body.appendChild(el);
+                requestAnimationFrame(() => el.style.transform = 'translateY(0)');
+                setTimeout(() => {
+                    el.style.transform = 'translateY(-100%)';
+                    setTimeout(() => el.remove(), 300);
+                }, 2000);
+            };
+
+            return (
+                <div className="w-full h-full flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                    </AnimatePresence>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

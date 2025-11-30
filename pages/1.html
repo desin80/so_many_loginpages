@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Neo Brutalism</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Lexend+Mega:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #ffde59; /* 亮黄背景 */
+            font-family: 'Space Grotesk', sans-serif;
+            overflow: hidden;
+            background-image: radial-gradient(#000 15%, transparent 16%), radial-gradient(#000 15%, transparent 16%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+
+        /* 粗野主义阴影核心类 */
+        .neo-box {
+            border: 3px solid #000;
+            box-shadow: 6px 6px 0px 0px #000;
+            transition: all 0.1s ease;
+            background: white;
+        }
+        
+        /* 按钮按下效果：阴影消失，位移 */
+        .neo-btn:active:not(:disabled) {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px 0px #000;
+        }
+
+        /* 输入框聚焦效果 */
+        .neo-input:focus {
+            background-color: #fff4f4;
+            outline: none;
+        }
+
+        /* 装饰性漂浮物 */
+        .float-shape {
+            position: absolute;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0 0 #000;
+            z-index: 0;
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        /* 标题字体 */
+        .font-display { font-family: 'Lexend Mega', sans-serif; }
+    </style>
+</head>
+<body class="h-screen w-full flex items-center justify-center">
+
+    <!-- 背景装饰 -->
+    <div class="float-shape bg-pink-400 w-32 h-32 rounded-full -top-10 -left-10" style="animation-delay: 0s;"></div>
+    <div class="float-shape bg-blue-400 w-24 h-24 rotate-45 bottom-20 left-20" style="animation-delay: 1s;"></div>
+    <div class="float-shape bg-green-400 w-40 h-20 top-20 right-20" style="animation-delay: 2s;"></div>
+
+    <div id="root" class="relative z-10 w-full max-w-[460px] px-4"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 漫画风格弹窗 ---
+        const NeoToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ scale: 0, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 10 }}
+                className={`fixed top-10 right-10 z-50 px-6 py-4 border-[3px] border-black shadow-[6px_6px_0_0_#000] font-bold text-lg flex items-center gap-3
+                    ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-400 text-black'}`}
+            >
+                <i className={type === 'error' ? "ri-skull-line text-2xl" : "ri-thumb-up-fill text-2xl"}></i>
+                {msg}
+            </motion.div>
+        );
+
+        // --- 粗野输入框 ---
+        const NeoInput = ({ label, type = "text", value, onChange, placeholder, rightAction, error }) => (
+            <div className="mb-5 relative">
+                <label className="block font-bold text-black mb-1 uppercase tracking-wider text-sm bg-white border-2 border-black inline-block px-2 py-0.5 shadow-[3px_3px_0_0_#000] rotate-[-1deg]">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input
+                        type={type}
+                        value={value}
+                        onChange={onChange}
+                        placeholder={placeholder}
+                        className={`w-full h-14 px-4 border-[3px] border-black text-lg font-bold placeholder-gray-400 neo-input bg-white transition-colors
+                            ${error ? 'bg-red-100' : ''}`}
+                    />
+                    {rightAction && (
+                        <div className="absolute top-1.5 right-1.5 h-[44px]">
+                            {rightAction}
+                        </div>
+                    )}
+                </div>
+                {error && (
+                    <div className="absolute right-0 -bottom-6 bg-red-500 text-white text-xs font-bold px-2 py-1 border-2 border-black rotate-2">
+                        {error}!!!
+                    </div>
+                )}
+            </div>
+        );
+
+        // --- 粗野按钮 ---
+        const NeoButton = ({ children, onClick, loading, variant = 'primary' }) => {
+            const colors = {
+                primary: 'bg-[#5c7cfa] hover:bg-[#4263eb] text-white',
+                secondary: 'bg-white hover:bg-gray-100 text-black',
+                action: 'bg-[#ff6b6b] text-black'
+            };
+
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={loading}
+                    className={`w-full py-3.5 px-6 font-display font-bold text-xl uppercase tracking-wide
+                        border-[3px] border-black shadow-[5px_5px_0_0_#000] neo-btn transition-transform
+                        ${colors[variant]}
+                        ${loading ? 'opacity-80 cursor-wait' : ''}
+                    `}
+                >
+                    {loading ? "LOADING..." : children}
+                </button>
+            );
+        };
+
+        // --- 验证码胶囊按钮 ---
+        const CodeBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`h-full px-4 font-bold border-l-[3px] border-black hover:bg-yellow-300 transition-colors
+                    ${count > 0 ? 'bg-gray-200 cursor-not-allowed' : 'bg-[#ffde59]'}
+                `}
+            >
+                {count > 0 ? `${count}s` : 'GET CODE'}
+            </button>
+        );
+
+        // --- 页面：登录 ---
+        const Login = ({ nav, toast }) => {
+            const [form, setForm] = useState({ u: '', p: '' });
+
+            const submit = () => {
+                if(!form.u || !form.p) return toast('HEY! EMPTY FIELDS!', 'error');
+                toast('LOGGED IN BABY!');
+                // 模拟跳转
+            };
+
+            return (
+                <motion.div initial={{x: -300, opacity: 0}} animate={{x: 0, opacity: 1}} exit={{x: 300, opacity: 0}} className="space-y-6">
+                    <div className="bg-black text-white p-4 border-[3px] border-black shadow-[6px_6px_0_0_#888] mb-8 rotate-1">
+                        <h1 className="font-display text-4xl text-center">LOGIN.EXE</h1>
+                    </div>
+
+                    <NeoInput label="Account" placeholder="who_are_you?" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                    <NeoInput label="Password" type="password" placeholder="***" value={form.p} onChange={e=>setForm({...form, p:e.target.value})} />
+
+                    <div className="flex justify-between items-center px-1">
+                        <button onClick={()=>nav('reg')} className="font-bold underline decoration-2 decoration-black hover:bg-yellow-300 px-1">
+                            NO ACCOUNT?
+                        </button>
+                        <button onClick={()=>nav('reset')} className="font-bold text-gray-500 hover:text-black">
+                            FORGOT?
+                        </button>
+                    </div>
+
+                    <NeoButton onClick={submit}>ENTER WORLD</NeoButton>
+                </motion.div>
+            );
+        };
+
+        // --- 页面：注册 ---
+        const Register = ({ nav, toast }) => {
+            const [form, setForm] = useState({ u:'', e:'', c:'', p:'', cp:'' });
+            const [count, setCount] = useState(0);
+
+            useEffect(()=> { if(count>0) setTimeout(()=>setCount(c=>c-1), 1000) }, [count]);
+
+            const submit = () => {
+                if(form.p !== form.cp) return toast('PASSWORDS NO MATCH!', 'error');
+                toast('WELCOME ABOARD!');
+                nav('login');
+            };
+
+            return (
+                <motion.div initial={{x: -300, opacity: 0}} animate={{x: 0, opacity: 1}} exit={{x: 300, opacity: 0}} className="space-y-4">
+                    <h2 className="font-display text-3xl mb-6 bg-white border-[3px] border-black p-2 inline-block shadow-[4px_4px_0_0_#000]">JOIN US</h2>
+
+                    <NeoInput label="Username" placeholder="CoolName123" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                    
+                    <NeoInput 
+                        label="Email" placeholder="you@mail.com" 
+                        value={form.e} onChange={e=>setForm({...form, e:e.target.value})}
+                        rightAction={<CodeBtn onClick={()=>{setCount(60);toast('CODE SENT!')}} count={count} />}
+                    />
+
+                    <NeoInput label="Code" placeholder="1234" value={form.c} onChange={e=>setForm({...form, c:e.target.value})} />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <NeoInput label="Pass" type="password" placeholder="*" value={form.p} onChange={e=>setForm({...form, p:e.target.value})} />
+                        <NeoInput label="Confirm" type="password" placeholder="*" value={form.cp} onChange={e=>setForm({...form, cp:e.target.value})} />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                        <div className="col-span-1">
+                            <NeoButton variant="secondary" onClick={()=>nav('login')}><i className="ri-arrow-left-line"></i></NeoButton>
+                        </div>
+                        <div className="col-span-2">
+                             <NeoButton onClick={submit} variant="action">REGISTER</NeoButton>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面：重置 ---
+        const Reset = ({ nav, toast }) => {
+            const [form, setForm] = useState({ u:'', e:'', c:'', np:'' });
+            const [count, setCount] = useState(0);
+            
+            useEffect(()=> { if(count>0) setTimeout(()=>setCount(c=>c-1), 1000) }, [count]);
+
+            return (
+                <motion.div initial={{x: -300, opacity: 0}} animate={{x: 0, opacity: 1}} exit={{x: 300, opacity: 0}} className="space-y-5">
+                    <div className="border-[3px] border-black bg-[#ff922b] p-4 shadow-[5px_5px_0_0_#000] mb-6">
+                        <h2 className="font-display text-2xl font-black">RESET PASSWORD</h2>
+                        <p className="font-bold text-sm mt-1 border-t-2 border-black pt-1">DON'T PANIC.</p>
+                    </div>
+
+                    <NeoInput label="Target User" placeholder="User" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                    
+                    <NeoInput 
+                        label="Linked Email" placeholder="Email" 
+                        value={form.e} onChange={e=>setForm({...form, e:e.target.value})}
+                        rightAction={<CodeBtn onClick={()=>{setCount(60);toast('CHECK EMAIL!')}} count={count} />}
+                    />
+
+                    <NeoInput label="Secret Code" placeholder="0000" value={form.c} onChange={e=>setForm({...form, c:e.target.value})} />
+                    <NeoInput label="New Pass" type="password" placeholder="***" value={form.np} onChange={e=>setForm({...form, np:e.target.value})} />
+
+                    <div className="mt-8">
+                         <NeoButton onClick={()=>{toast('FIXED!');nav('login')}}>UPDATE NOW</NeoButton>
+                         <div className="mt-4 text-center">
+                            <button onClick={()=>nav('login')} className="font-bold text-sm underline decoration-2 hover:bg-white px-2">CANCEL ACTION</button>
+                         </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主容器 ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [msg, setMsg] = useState(null);
+
+            const toast = (m, t='success') => {
+                setMsg({m, t});
+                setTimeout(()=>setMsg(null), 3000);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {msg && <NeoToast msg={msg.m} type={msg.t} />}
+                    </AnimatePresence>
+
+                    {/* 主卡片容器 */}
+                    <div className="w-full bg-white border-[4px] border-black shadow-[12px_12px_0_0_#000] p-8 md:p-10 relative">
+                        
+                        {/* 顶部标签栏模拟 */}
+                        <div className="absolute -top-[24px] left-4 flex gap-2">
+                             <div className="bg-[#ff6b6b] border-[3px] border-b-0 border-black px-4 py-1 font-bold text-sm">IM_CLIENT</div>
+                             <div className="bg-white border-[3px] border-b-0 border-black px-4 py-1 font-bold text-sm text-gray-400">V1.0</div>
+                        </div>
+
+                        {/* 装饰性螺丝钉 */}
+                        <div className="absolute top-4 left-4 w-3 h-3 border-2 border-black rounded-full grid place-items-center"><div className="w-2 h-[2px] bg-black rotate-45"></div></div>
+                        <div className="absolute top-4 right-4 w-3 h-3 border-2 border-black rounded-full grid place-items-center"><div className="w-2 h-[2px] bg-black rotate-45"></div></div>
+                        <div className="absolute bottom-4 left-4 w-3 h-3 border-2 border-black rounded-full grid place-items-center"><div className="w-2 h-[2px] bg-black rotate-45"></div></div>
+                        <div className="absolute bottom-4 right-4 w-3 h-3 border-2 border-black rounded-full grid place-items-center"><div className="w-2 h-[2px] bg-black rotate-45"></div></div>
+
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} toast={toast} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} toast={toast} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} toast={toast} />}
+                        </AnimatePresence>
+                    </div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
