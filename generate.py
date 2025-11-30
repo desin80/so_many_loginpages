@@ -1,7 +1,8 @@
 import os
 import urllib.parse
+import re
 
-# 生成导航页面
+# 生成index.html页面的脚本
 
 PAGES_DIR = "pages"
 OUTPUT_FILE = "index.html"
@@ -107,19 +108,24 @@ HTML_TEMPLATE = """
 """
 
 
+def natural_sort_key(s):
+    return [
+        int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", s)
+    ]
+
+
 def generate_index():
     links_html = ""
-    file_count = 0
 
     if not os.path.exists(PAGES_DIR):
-        print(f"找不到 '{PAGES_DIR}' 文件夹")
+        print(f" 找不到 '{PAGES_DIR}' 文件夹")
         return
+
     files = [f for f in os.listdir(PAGES_DIR) if f.endswith(".html")]
-    files.sort()
+    files.sort(key=natural_sort_key)
+    file_count = len(files)
 
     for filename in files:
-        file_count += 1
-        # 处理文件名作为标题
         display_name = filename.replace(".html", "").replace("-", " ").replace("_", " ")
         safe_url = urllib.parse.quote(filename)
 
@@ -142,7 +148,7 @@ def generate_index():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(final_html)
 
-    print(f"已扫描 {file_count} 个文件并生成 {OUTPUT_FILE}")
+    print(f"成功! 已生成 {OUTPUT_FILE}，包含 {file_count} 个页面。")
 
 
 if __name__ == "__main__":
