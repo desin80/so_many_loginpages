@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Ukiyo-e Style</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 东方韵味字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --ink-bg: #f3f0e0; /* 宣纸色 */
+            --ink-blue: #2b4b64; /* 普鲁士蓝 */
+            --ink-dark: #1a1a1a; /* 墨黑 */
+            --ink-red: #b93a32; /* 朱砂红 */
+        }
+
+        body {
+            background-color: var(--ink-bg);
+            color: var(--ink-dark);
+            font-family: 'Noto Serif SC', serif;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- 1. 宣纸纹理 --- */
+        .paper-texture {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 50;
+            mix-blend-mode: multiply;
+        }
+
+        /* --- 2. 模拟毛笔边缘的 SVG 滤镜 --- */
+        /* 通过 displace 滤镜让直线变得扭曲，像墨迹 */
+        .ink-border {
+            position: relative;
+            border: 2px solid var(--ink-dark);
+            filter: url('#ink-displacement'); 
+        }
+
+        /* --- 3. 背景波浪 (纯 CSS + SVG) --- */
+        .wave-bg {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%; height: 50%;
+            z-index: 0;
+            opacity: 0.1;
+        }
+
+        /* --- 4. 墨水晕染按钮 --- */
+        .btn-ink {
+            position: relative;
+            overflow: hidden;
+            border: 2px solid var(--ink-dark);
+            transition: color 0.5s ease;
+            z-index: 1;
+        }
+        .btn-ink::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 300%; height: 300%;
+            background-color: var(--ink-dark);
+            border-radius: 40%;
+            transform: translate(-50%, -50%) scale(0) rotate(0deg);
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: -1;
+        }
+        .btn-ink:hover::before {
+            transform: translate(-50%, -50%) scale(1) rotate(45deg);
+        }
+        .btn-ink:hover {
+            color: var(--ink-bg);
+        }
+
+        /* --- 5. 印章样式 --- */
+        .seal {
+            border: 3px solid var(--ink-red);
+            color: var(--ink-red);
+            font-family: 'Ma Shan Zheng', cursive; /* 书法字体 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            /* 模拟印泥的不均匀感 */
+            mask-image: url("https://www.transparenttextures.com/patterns/black-linen.png"); 
+            -webkit-mask-image: url("https://www.transparenttextures.com/patterns/black-linen.png");
+        }
+
+        /* --- 输入框 --- */
+        .input-brush {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid rgba(43, 75, 100, 0.3);
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 1.25rem;
+            transition: all 0.3s;
+        }
+        .input-brush:focus {
+            outline: none;
+            border-bottom-color: var(--ink-blue);
+            background: rgba(43, 75, 100, 0.05);
+        }
+        .input-brush::placeholder {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.9rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 滤镜定义 -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <filter id="ink-displacement">
+                <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" result="noise" />
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- 纸纹 -->
+    <div class="paper-texture"></div>
+
+    <!-- 背景山水 -->
+    <div class="fixed top-10 right-10 opacity-10 pointer-events-none z-0">
+         <svg width="400" height="400" viewBox="0 0 100 100">
+             <circle cx="80" cy="20" r="10" fill="#b93a32" /> <!-- 红日 -->
+         </svg>
+    </div>
+    <div class="fixed bottom-0 left-0 w-full h-64 opacity-10 pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/shippo.png')]"></div>
+
+    <!-- UI 主容器 -->
+    <div id="root" class="relative z-10 w-full max-w-[900px] flex items-center justify-center p-4"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 竖排文字组件 ---
+        const VerticalText = ({ text, className }) => (
+            <div className={`writing-vertical-rl ${className}`} style={{writingMode: 'vertical-rl'}}>
+                {text.split('').map((char, i) => (
+                    <span key={i} className="mb-1">{char}</span>
+                ))}
+            </div>
+        );
+
+        // --- 红色印章 Loading ---
+        const SealLoading = () => (
+            <div className="w-6 h-6 border-2 border-[#b93a32] text-[#b93a32] flex items-center justify-center text-xs animate-spin">
+                印
+            </div>
+        );
+
+        // --- 水墨输入框 ---
+        const InkInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-10 relative">
+                <label className="absolute -top-6 left-0 text-sm text-[#2b4b64] font-bold tracking-widest opacity-70">
+                    {label}
+                </label>
+                <input 
+                    type={type} 
+                    value={value} 
+                    onChange={onChange}
+                    className="input-brush w-full py-2 px-1 text-[#2b4b64]"
+                    placeholder=" "
+                />
+                {rightElem && (
+                    <div className="absolute right-0 bottom-2">
+                        {rightElem}
+                    </div>
+                )}
+            </div>
+        );
+
+        // --- 水墨按钮 ---
+        const InkBtn = ({ children, onClick, loading, variant="primary" }) => {
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={loading}
+                    className={`
+                        w-full py-4 text-lg tracking-[0.2em] font-bold transition-all btn-ink
+                        ${variant === 'primary' 
+                            ? 'text-[#1a1a1a] border-[#1a1a1a]' 
+                            : 'text-[#2b4b64] border-[#2b4b64]'}
+                    `}
+                    style={{filter: 'url(#ink-displacement)'}} // 应用毛笔边缘滤镜
+                >
+                    {loading ? <span className="opacity-50">书写中...</span> : children}
+                </button>
+            );
+        };
+
+        // --- 验证码印章 ---
+        const SealBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    w-12 h-12 seal text-sm transition-transform hover:scale-110 rotate-12
+                    ${count > 0 ? 'opacity-50 cursor-not-allowed' : 'opacity-90 hover:opacity-100'}
+                `}
+            >
+                {count > 0 ? count : '传书'}
+            </button>
+        );
+
+        // --- 页面: 登录 ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="flex flex-col md:flex-row w-full bg-[#fcfbf6] shadow-[0_10px_40px_rgba(0,0,0,0.1)] overflow-hidden border border-[#e0dac0]"
+                    style={{minHeight: '500px'}}
+                >
+                    {/* 左侧：画卷区域 */}
+                    <div className="w-full md:w-5/12 bg-[#2b4b64] relative overflow-hidden flex items-center justify-center p-8">
+                        {/* 装饰云纹 */}
+                        <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/seigaiha.png')]"></div>
+                        
+                        <div className="relative z-10 text-[#f3f0e0] flex flex-col items-center">
+                            <div className="w-24 h-24 border-2 border-[#f3f0e0] rounded-full flex items-center justify-center mb-6 text-4xl font-serif">
+                                墨
+                            </div>
+                            <VerticalText text="云深不知处" className="text-2xl font-serif tracking-widest opacity-80" />
+                            <div className="mt-8 h-16 w-1 bg-[#f3f0e0] opacity-30"></div>
+                        </div>
+                    </div>
+
+                    {/* 右侧：交互区域 */}
+                    <div className="w-full md:w-7/12 p-10 md:p-14 relative">
+                        <div className="mb-12 text-center">
+                            <h2 className="text-3xl font-serif text-[#1a1a1a]">登 录</h2>
+                        </div>
+
+                        <InkInput label="名讳 (账号)" />
+                        <InkInput label="通关令 (密码)" type="password" />
+
+                        <div className="flex justify-between items-center mb-10 text-sm text-[#555]">
+                            <button onClick={()=>nav('reg')} className="hover:text-[#b93a32] transition-colors">刻录新章</button>
+                            <button onClick={()=>nav('reset')} className="hover:text-[#b93a32] transition-colors">遗忘通关令?</button>
+                        </div>
+
+                        <InkBtn onClick={()=>notify('入画成功')}>进入画卷</InkBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 注册 ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+                    transition={{ duration: 0.8 }}
+                    className="w-full max-w-lg bg-[#fcfbf6] p-10 shadow-2xl border-t-4 border-[#b93a32] relative"
+                >
+                    <div className="absolute top-4 right-4 text-[#ccc] cursor-pointer hover:text-[#b93a32]" onClick={()=>nav('login')}>
+                        <i className="ri-close-line text-2xl"></i>
+                    </div>
+
+                    <div className="mb-10 text-center">
+                         <h2 className="text-2xl font-serif">题名册</h2>
+                         <p className="text-xs text-[#888] mt-2">首次入画，请留墨宝</p>
+                    </div>
+
+                    <InkInput label="雅号 (昵称)" />
+                    <InkInput 
+                        label="飞鸽传书 (邮箱)" 
+                        rightElem={<SealBtn count={count} onClick={()=>{setCount(60);notify('鸿雁已发')}} />}
+                    />
+                    <div className="grid grid-cols-2 gap-6">
+                        <InkInput label="信物 (验证码)" />
+                        <InkInput label="密匙" type="password" />
+                    </div>
+
+                    <div className="mt-6">
+                        <InkBtn onClick={()=>{notify('题名完成');nav('login')}}>落 款</InkBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 重置 ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.8 }}
+                    className="w-full max-w-md bg-[#fcfbf6] p-12 shadow-[0_20px_50px_rgba(43,75,100,0.2)] text-center relative"
+                >
+                    <div className="w-full flex justify-center mb-8">
+                         <div className="seal px-4 py-2 text-xl rotate-0 border-4">重 铸</div>
+                    </div>
+                    
+                    <p className="mb-10 text-sm text-[#666] leading-loose">
+                        往事如烟，密匙已忘。<br/>
+                        凭飞鸽传书，可重铸通关令。
+                    </p>
+
+                    <InkInput 
+                        label="飞鸽传书 (邮箱)" 
+                        rightElem={<SealBtn count={count} onClick={()=>{setCount(60);notify('鸿雁已发')}} />}
+                    />
+                    <InkInput label="信物 (验证码)" />
+                    <InkInput label="新密匙" type="password" />
+
+                    <div className="mt-8 flex gap-4">
+                        <button onClick={()=>nav('login')} className="flex-1 py-3 text-[#666] hover:text-[#1a1a1a]">归 去</button>
+                        <div className="flex-1">
+                             <InkBtn onClick={()=>{notify('重铸完成');nav('login')}}>确 认</InkBtn>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            
+            // 墨迹 Toast
+            const notify = (msg) => {
+                const el = document.createElement('div');
+                el.className = "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#b93a32] text-4xl font-serif z-50 pointer-events-none";
+                el.style.textShadow = "0 0 10px rgba(185, 58, 50, 0.2)";
+                el.style.fontFamily = "'Ma Shan Zheng', cursive";
+                el.innerText = msg;
+                el.style.opacity = 0;
+                el.style.transform = "translate(-50%, -50%) scale(1.5)";
+                el.style.transition = "all 0.5s ease-out";
+                document.body.appendChild(el);
+
+                // 进场
+                requestAnimationFrame(() => {
+                    el.style.opacity = 1;
+                    el.style.transform = "translate(-50%, -50%) scale(1)";
+                });
+
+                // 退场
+                setTimeout(() => {
+                    el.style.opacity = 0;
+                    el.style.filter = "blur(10px)";
+                    setTimeout(() => el.remove(), 500);
+                }, 2000);
+            };
+
+            return (
+                <div className="w-full h-full flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                    </AnimatePresence>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

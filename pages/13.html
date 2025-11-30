@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Blueprint</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 字体：手写工程体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Tekno&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bp-blue: #0a4b78;  /* 蓝图深蓝 */
+            --bp-line: #e0f2ff;  /* 粉笔白 */
+            --bp-grid: rgba(224, 242, 255, 0.15);
+            --bp-guide: rgba(224, 242, 255, 0.4);
+        }
+
+        body {
+            background-color: var(--bp-blue);
+            color: var(--bp-line);
+            font-family: 'Architects Daughter', cursive;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- 1. 蓝图网格背景 --- */
+        .blueprint-grid {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* 大网格 + 小网格 */
+            background-image: 
+                linear-gradient(var(--bp-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--bp-grid) 1px, transparent 1px),
+                linear-gradient(rgba(224,242,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(224,242,255,0.05) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- 2. 手绘边框效果 --- */
+        .sketch-border {
+            border: 2px solid var(--bp-line);
+            position: relative;
+            background: rgba(10, 75, 120, 0.8);
+            /* 模拟手绘的不完美直线 */
+            border-radius: 2px 255px 3px 25px / 255px 5px 225px 3px;
+        }
+        /* 辅助测量线 */
+        .measure-lines::before {
+            content: '';
+            position: absolute;
+            top: -10px; left: -10px; right: -10px; bottom: -10px;
+            border: 1px dashed var(--bp-guide);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* 角落的十字标记 */
+        .cross-mark {
+            position: absolute;
+            width: 10px; height: 10px;
+            pointer-events: none;
+        }
+        .cross-mark::before, .cross-mark::after {
+            content: ''; position: absolute; background: var(--bp-line);
+        }
+        .cross-mark::before { top: 4px; left: 0; width: 10px; height: 2px; }
+        .cross-mark::after { top: 0; left: 4px; width: 2px; height: 10px; }
+        
+        .cm-tl { top: -15px; left: -15px; }
+        .cm-tr { top: -15px; right: -15px; }
+        .cm-bl { bottom: -15px; left: -15px; }
+        .cm-br { bottom: -15px; right: -15px; }
+
+        /* --- 3. 字体 --- */
+        .font-tech { font-family: 'Tekno', sans-serif; } /* 用于标题的硬朗字体 */
+        
+        /* --- 4. 铅笔涂抹动画 --- */
+        .scribble-hover {
+            position: relative;
+            overflow: hidden;
+        }
+        .scribble-hover::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 200%; height: 100%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(255,255,255,0.1) 5px,
+                rgba(255,255,255,0.1) 10px
+            );
+            transition: transform 0.3s;
+            transform: translateX(0);
+        }
+        .scribble-hover:hover::after {
+            animation: scribble 0.5s steps(10) infinite;
+        }
+        @keyframes scribble {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(10px); }
+        }
+
+        /* --- 5. 输入框 --- */
+        .input-sketch {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--bp-line);
+            color: white;
+            font-family: 'Architects Daughter', cursive;
+            font-size: 1.2rem;
+        }
+        .input-sketch:focus {
+            outline: none;
+            border-bottom-width: 3px;
+            border-image: linear-gradient(to right, transparent, white, transparent) 1;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 蓝图背景 -->
+    <div class="blueprint-grid"></div>
+    
+    <!-- 背景装饰图纸元素 -->
+    <div class="fixed top-20 right-20 w-32 h-32 border border-dashed border-white/20 rounded-full flex items-center justify-center opacity-30 pointer-events-none rotate-12">
+        <div class="w-full h-px bg-white/20"></div>
+        <div class="h-full w-px bg-white/20 absolute"></div>
+        <span class="absolute top-2 right-4 text-xs">R=160</span>
+    </div>
+
+    <!-- 主 UI 挂载点 -->
+    <div id="root" class="relative z-10 w-full max-w-[500px] p-8"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 尺寸标注组件 ---
+        const DimensionLine = ({ label, width = "100%" }) => (
+            <div className="flex items-center gap-2 text-[10px] opacity-60 mb-1 w-full">
+                <div className="h-2 border-l border-white"></div>
+                <div className="h-px bg-white flex-1 relative">
+                    <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#0a4b78] px-1">{label}</span>
+                </div>
+                <div className="h-2 border-r border-white"></div>
+            </div>
+        );
+
+        // --- 测量十字 ---
+        const CrossMarks = () => (
+            <>
+                <div className="cross-mark cm-tl"></div>
+                <div className="cross-mark cm-tr"></div>
+                <div className="cross-mark cm-bl"></div>
+                <div className="cross-mark cm-br"></div>
+            </>
+        );
+
+        // --- 蓝图输入框 ---
+        const SketchInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-8 relative">
+                <div className="flex justify-between items-end mb-1">
+                    <label className="text-sm font-bold tracking-wider">{label}</label>
+                    <span className="text-[10px] opacity-50 font-sans">VAR_STR</span>
+                </div>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-sketch w-full py-2"
+                        placeholder="write here..."
+                    />
+                    {rightElem && (
+                        <div className="absolute right-0 bottom-2">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+                {/* 装饰性的指引线 */}
+                <div className="absolute -left-4 top-1/2 w-3 h-px bg-white/30"></div>
+                <div className="absolute -right-4 top-1/2 w-3 h-px bg-white/30"></div>
+            </div>
+        );
+
+        // --- 蓝图按钮 ---
+        const SketchBtn = ({ children, onClick, loading, secondary }) => (
+            <button
+                onClick={onClick}
+                disabled={loading}
+                className={`
+                    w-full py-3 text-lg font-bold border-2 transition-all scribble-hover relative
+                    ${secondary 
+                        ? 'border-dashed border-white/50 text-white/80 hover:border-white hover:text-white' 
+                        : 'border-white bg-white/10 hover:bg-white/20 text-white'}
+                `}
+                style={{
+                    borderRadius: '255px 15px 225px 15px / 15px 225px 15px 255px' // 手绘椭圆效果
+                }}
+            >
+                {/* 按钮两侧的尺寸标 */}
+                <div className="absolute -left-3 top-1/2 -translate-y-1/2 h-4 w-px bg-white/50"></div>
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 h-4 w-px bg-white/50"></div>
+                
+                {loading ? 'CALCULATING...' : children}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav }) => {
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }} 
+                    animate={{ opacity: 1, scale: 1 }} 
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="sketch-border measure-lines p-8 md:p-10"
+                >
+                    <CrossMarks />
+                    
+                    {/* 顶部标题区 */}
+                    <div className="mb-10 text-center relative">
+                        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-6 w-px h-20 bg-white/20"></div>
+                        <h1 className="text-4xl font-bold mb-2">PROJECT: LOGIN</h1>
+                        <p className="text-xs opacity-70 font-sans tracking-widest">DWG NO. 00-12-A</p>
+                        <div className="absolute top-0 right-0 border border-white p-1 opacity-50 rotate-6">
+                            <span className="text-[10px]">APPROVED</span>
+                        </div>
+                    </div>
+
+                    <DimensionLine label="INPUT AREA" />
+
+                    <SketchInput label="User_ID" />
+                    <SketchInput label="Pass_Key" type="password" />
+
+                    <div className="flex justify-end mb-8 -mt-2">
+                        <button onClick={()=>nav('reset')} className="text-xs border-b border-dashed border-white/50 hover:border-white pb-1">
+                            Ref: Lost_Key?
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <SketchBtn onClick={()=>alert('Executing Login...')}>INITIATE</SketchBtn>
+                        <SketchBtn secondary onClick={()=>nav('reg')}>DRAFT NEW USER</SketchBtn>
+                    </div>
+
+                    {/* 底部标注 */}
+                    <div className="mt-8 pt-4 border-t border-dashed border-white/30 flex justify-between text-[10px] opacity-50 font-sans">
+                        <span>SCALE: 1:1</span>
+                        <span>REV: 2.0</span>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ x: 50, opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: -50, opacity: 0 }}
+                    className="sketch-border measure-lines p-8 relative"
+                >
+                    <CrossMarks />
+                    
+                    <div className="flex justify-between items-start mb-8">
+                        <div>
+                            <h2 className="text-2xl font-bold">SCHEMATIC: NEW USER</h2>
+                            <p className="text-xs opacity-60">Phase 1: Registration</p>
+                        </div>
+                        <button onClick={()=>nav('login')} className="w-8 h-8 border border-white rounded-full flex items-center justify-center hover:bg-white/10">
+                            X
+                        </button>
+                    </div>
+
+                    <SketchInput label="Alias (Name)" />
+                    <SketchInput 
+                        label="Signal (Email)" 
+                        rightElem={
+                            <button onClick={()=>setCount(60)} disabled={count>0} className="text-xs border border-white px-2 py-1 rounded-sm hover:bg-white hover:text-[#0a4b78] disabled:opacity-50">
+                                {count>0 ? `${count}s` : 'GET TOKEN'}
+                            </button>
+                        }
+                    />
+                    
+                    <div className="flex gap-4">
+                        <div className="w-1/3"><SketchInput label="Token" /></div>
+                        <div className="w-2/3"><SketchInput label="Secret" type="password" /></div>
+                    </div>
+
+                    <div className="mt-6">
+                        <SketchBtn onClick={()=>{alert('User Created');nav('login')}}>CONSTRUCT</SketchBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ y: 50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }} 
+                    exit={{ y: -50, opacity: 0 }}
+                    className="sketch-border measure-lines p-8"
+                >
+                    <CrossMarks />
+                    
+                    <div className="border-l-4 border-dashed border-white/50 pl-4 mb-8">
+                        <h2 className="text-3xl font-bold">REVISION</h2>
+                        <p className="text-sm opacity-70">Updating Credentials...</p>
+                    </div>
+
+                    <SketchInput 
+                        label="Target Identifier" 
+                        rightElem={<button onClick={()=>setCount(60)} disabled={count>0} className="text-xl hover:text-yellow-300"><i className="ri-mail-send-line"></i></button>}
+                    />
+                    <SketchInput label="Auth Token" />
+                    <SketchInput label="New Secret" type="password" />
+
+                    <div className="mt-8 grid grid-cols-2 gap-4">
+                        <SketchBtn secondary onClick={()=>nav('login')}>DISCARD</SketchBtn>
+                        <SketchBtn onClick={()=>{alert('Updated');nav('login')}}>APPLY CHANGE</SketchBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+
+            return (
+                <div className="w-full h-full flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} />}
+                    </AnimatePresence>
+                    
+                    {/* 右下角署名 */}
+                    <div className="fixed bottom-4 right-4 text-right opacity-40 text-[10px] font-sans">
+                        <div className="border border-white p-2 inline-block">
+                            <p>DESIGNED BY</p>
+                            <p className="font-bold text-lg">ARCHITECT.AI</p>
+                            <p>DATE: 2025-10-24</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

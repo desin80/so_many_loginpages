@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Paper Collage</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 引入衬线体和打字机字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Special+Elite&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --paper-bg: #f2f0e4;
+            --ink-black: #1a1917;
+            --marker-yellow: #fff04b;
+            --stamp-red: #d93025;
+            --tape-color: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background-color: var(--paper-bg);
+            color: var(--ink-black);
+            font-family: 'Special Elite', cursive; /* 全局打字机字体 */
+            overflow: hidden;
+            /* 纸张纹理叠加 */
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+        }
+
+        /* 报纸标题字体 */
+        .font-headline {
+            font-family: 'Abril Fatface', cursive;
+            letter-spacing: 1px;
+        }
+
+        /* 撕裂边缘效果 (Clip-path模拟) */
+        .torn-paper {
+            background: #fff;
+            position: relative;
+            box-shadow: 2px 4px 15px rgba(0,0,0,0.15);
+        }
+        .torn-top {
+            clip-path: polygon(0% 10px, 5% 5px, 10% 12px, 15% 5px, 20% 10px, 25% 5px, 30% 12px, 35% 5px, 40% 10px, 45% 5px, 50% 12px, 55% 5px, 60% 10px, 65% 5px, 70% 12px, 75% 5px, 80% 10px, 85% 5px, 90% 12px, 95% 5px, 100% 10px, 100% 100%, 0% 100%);
+        }
+        .torn-bottom {
+             clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 10px), 95% calc(100% - 5px), 90% calc(100% - 12px), 85% calc(100% - 5px), 80% calc(100% - 10px), 75% calc(100% - 5px), 70% calc(100% - 12px), 65% calc(100% - 5px), 60% calc(100% - 10px), 55% calc(100% - 5px), 50% calc(100% - 12px), 45% calc(100% - 5px), 40% calc(100% - 10px), 35% calc(100% - 5px), 30% calc(100% - 12px), 25% calc(100% - 5px), 20% calc(100% - 10px), 15% calc(100% - 5px), 10% calc(100% - 12px), 5% calc(100% - 5px), 0% calc(100% - 10px));
+        }
+
+        /* 胶带效果 */
+        .tape {
+            position: absolute;
+            background-color: rgba(220, 220, 200, 0.7);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            backdrop-filter: blur(2px);
+            transform: rotate(-25deg);
+            z-index: 20;
+            border-left: 1px dashed rgba(255,255,255,0.4);
+            border-right: 1px dashed rgba(255,255,255,0.4);
+        }
+
+        /* 手写笔迹下划线 */
+        .scribble-input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #aaa;
+            background-image: repeating-linear-gradient(90deg, #aaa 0, #aaa 4px, transparent 4px, transparent 8px);
+            background-size: 100% 2px;
+            background-position: bottom;
+            background-repeat: no-repeat;
+            transition: all 0.3s ease;
+        }
+        .scribble-input:focus {
+            background-image: linear-gradient(#1a1917, #1a1917);
+            outline: none;
+        }
+
+        /* 荧光笔高亮 */
+        .highlight {
+            background: linear-gradient(100deg, rgba(255,240,75,0) 0%, rgba(255,240,75,0.8) 10%, rgba(255,240,75,0.6) 90%, rgba(255,240,75,0) 100%);
+            padding: 0 5px;
+            border-radius: 2px;
+        }
+
+        /* 印章动画 */
+        @keyframes stamp {
+            0% { opacity: 0; transform: scale(3) rotate(-10deg); }
+            100% { opacity: 1; transform: scale(1) rotate(-10deg); }
+        }
+        .stamp-anim {
+            animation: stamp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 背景杂物装饰 -->
+    <div class="fixed top-10 left-10 w-40 h-40 bg-white shadow-xl rotate-[-5deg] p-4 z-0 torn-paper torn-bottom">
+        <div class="w-full h-full border-2 border-dashed border-gray-300 flex items-center justify-center">
+            <span class="text-4xl opacity-20 rotate-12">NOTES</span>
+        </div>
+        <div class="tape w-20 h-6 -top-3 left-10"></div>
+    </div>
+    <div class="fixed bottom-10 right-10 w-64 h-64 bg-[#1a1917] rotate-[5deg] z-0 torn-paper flex items-center justify-center">
+        <h1 class="font-headline text-8xl text-[#f2f0e4] opacity-10">IM<br>APP</h1>
+    </div>
+
+    <!-- 主界面挂载 -->
+    <div id="root" class="relative z-10 w-full max-w-[480px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 胶带组件 ---
+        const Tape = ({ className }) => (
+            <div className={`tape h-8 w-24 ${className}`}></div>
+        );
+
+        // --- 红色印章提示 ---
+        const StampToast = ({ msg, type }) => (
+            <div className="fixed top-10 right-10 z-50 stamp-anim pointer-events-none">
+                <div className={`border-4 rounded-lg px-4 py-2 text-xl font-bold uppercase tracking-widest text-center opacity-90
+                    ${type === 'error' 
+                        ? 'border-red-600 text-red-600 -rotate-6' 
+                        : 'border-green-700 text-green-700 rotate-3'}
+                `} style={{maskImage: 'url("https://www.transparenttextures.com/patterns/black-linen.png")'}}>
+                    {msg}
+                </div>
+            </div>
+        );
+
+        // --- 纸质输入框 ---
+        const PaperInput = ({ label, value, onChange, type="text", placeholder, rightElem }) => (
+            <div className="mb-6 relative">
+                <label className="block font-bold mb-1 text-sm uppercase tracking-wide opacity-70 rotate-[-1deg] w-fit bg-white px-1">
+                    {label}:
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        placeholder={placeholder}
+                        className="scribble-input w-full py-3 text-lg bg-[#f9f8f3] px-2 shadow-sm"
+                        style={{fontFamily: "'Special Elite', cursive"}}
+                    />
+                    {rightElem && (
+                        <div className="absolute right-2 top-2">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 剪纸风格按钮 ---
+        const CutoutBtn = ({ children, onClick, loading, variant='black' }) => {
+            return (
+                <motion.button
+                    whileHover={{ scale: 1.02, rotate: 1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onClick}
+                    disabled={loading}
+                    className={`
+                        w-full py-4 relative group transition-all
+                        ${loading ? 'opacity-80' : ''}
+                    `}
+                >
+                    {/* 阴影层 */}
+                    <div className="absolute inset-0 bg-gray-400 translate-x-1 translate-y-2 torn-paper torn-bottom" style={{clipPath:'none'}}></div>
+                    
+                    {/* 实体层 */}
+                    <div className={`
+                        relative z-10 w-full h-full flex items-center justify-center font-bold text-xl tracking-widest torn-paper
+                        ${variant === 'black' 
+                            ? 'bg-[#1a1917] text-[#f2f0e4]' 
+                            : 'bg-white text-[#1a1917] border-2 border-[#1a1917]'}
+                    `}>
+                        {loading ? <span className="animate-pulse">PROCESSING...</span> : children}
+                    </div>
+                </motion.button>
+            );
+        };
+
+        // --- 验证码贴纸按钮 ---
+        const StickerBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md transition-transform hover:scale-110 rotate-12 border border-gray-200
+                    ${count > 0 ? 'bg-gray-200 text-gray-500' : 'bg-yellow-300 text-black'}
+                `}
+            >
+                {count > 0 ? count : 'SEND'}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav, toast }) => {
+            return (
+                <motion.div 
+                    initial={{ rotate: -5, y: -100, opacity: 0 }}
+                    animate={{ rotate: 0, y: 0, opacity: 1 }}
+                    exit={{ rotate: 5, y: 100, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 120 }}
+                    className="bg-white p-8 shadow-2xl relative torn-paper torn-bottom min-h-[500px] flex flex-col"
+                >
+                    <Tape className="-top-4 -left-4" />
+                    <Tape className="-bottom-4 -right-4 rotate-[45deg]" />
+
+                    <div className="text-center mb-10 border-b-2 border-black pb-4 border-double">
+                        <h1 className="font-headline text-5xl mb-2">The Daily<br/>Log-In</h1>
+                        <p className="text-xs italic bg-black text-white inline-block px-2">VOL. 01 — ISSUE 2025</p>
+                    </div>
+
+                    <div className="flex-1">
+                        <PaperInput label="Identity Code" placeholder="User123" />
+                        <PaperInput label="Secret Pass" type="password" placeholder="******" />
+                        
+                        <div className="flex justify-end -mt-2 mb-6">
+                            <button onClick={()=>nav('reset')} className="text-sm underline decoration-red-500 decoration-2 hover:bg-yellow-100">
+                                Lost your key?
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <CutoutBtn onClick={() => toast('ACCESS GRANTED', 'success')}>ENTER</CutoutBtn>
+                        <CutoutBtn variant="white" onClick={() => nav('reg')}>SUBSCRIBE (REG)</CutoutBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, toast }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ rotate: 5, x: 100, opacity: 0 }}
+                    animate={{ rotate: 0, x: 0, opacity: 1 }}
+                    exit={{ rotate: -5, x: -100, opacity: 0 }}
+                    className="bg-[#fffdf0] p-8 shadow-2xl relative torn-paper torn-top min-h-[500px]"
+                >
+                    <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-90" />
+                    
+                    <div className="mb-6 flex justify-between items-end">
+                        <h2 className="font-headline text-4xl highlight">New Member</h2>
+                        <button onClick={()=>nav('login')} className="text-2xl hover:text-red-600"><i className="ri-close-circle-line"></i></button>
+                    </div>
+
+                    <div className="space-y-1">
+                        <PaperInput label="Alias" placeholder="Name" />
+                        <PaperInput 
+                            label="Post Box (Email)" 
+                            placeholder="mail@post.com"
+                            rightElem={<StickerBtn count={count} onClick={()=>{setCount(60);toast('SENT!', 'success')}} />}
+                        />
+                        <PaperInput label="Ticket (Code)" placeholder="####" />
+                        <div className="grid grid-cols-2 gap-4">
+                             <PaperInput label="Pass" type="password" />
+                             <PaperInput label="Confirm" type="password" />
+                        </div>
+                    </div>
+
+                    <div className="mt-8 rotate-1">
+                        <CutoutBtn onClick={() => {toast('REGISTERED', 'success');nav('login')}}>SIGN ME UP</CutoutBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, toast }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    className="bg-white p-8 shadow-2xl relative min-h-[400px] border-4 border-[#1a1917]"
+                >
+                    <Tape className="-top-4 left-10 rotate-0" />
+                    <Tape className="-top-4 right-10 rotate-0" />
+
+                    <div className="mb-8">
+                        <h2 className="font-headline text-4xl text-red-600 uppercase">Emergency<br/>Recovery</h2>
+                        <div className="h-1 w-full bg-black mt-2"></div>
+                    </div>
+
+                    <PaperInput 
+                        label="Target Address" 
+                        placeholder="Email"
+                        rightElem={<StickerBtn count={count} onClick={()=>{setCount(60);toast('DISPATCHED', 'success')}} />}
+                    />
+                    <PaperInput label="Secret Code" placeholder="####" />
+                    <PaperInput label="New Passphrase" type="password" />
+
+                    <div className="mt-8 flex gap-4">
+                        <button onClick={()=>nav('login')} className="flex-1 border-2 border-black py-3 font-bold hover:bg-gray-100">CANCEL</button>
+                        <div className="flex-1"><CutoutBtn onClick={()=>{toast('FIXED', 'success');nav('login')}}>RESTORE</CutoutBtn></div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const showToast = (msg, type) => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 2500);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <StampToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        {page === 'login' && <Login key="login" nav={setPage} toast={showToast} />}
+                        {page === 'reg' && <Register key="reg" nav={setPage} toast={showToast} />}
+                        {page === 'reset' && <Reset key="reset" nav={setPage} toast={showToast} />}
+                    </AnimatePresence>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

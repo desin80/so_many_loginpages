@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Synthwave 1984</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 80年代复古字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Righteous&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --synth-bg: #240038;
+            --synth-grid: #ff00ff;
+            --synth-sun-1: #ffbd00;
+            --synth-sun-2: #ff0055;
+            --neon-blue: #00f0ff;
+            --neon-pink: #ff00ff;
+        }
+
+        body {
+            background-color: #0b0014;
+            color: #fff;
+            font-family: 'Righteous', cursive;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- 1. 3D 无限网格地板 --- */
+        .perspective-container {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%; height: 50%;
+            perspective: 600px;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .grid-floor {
+            position: absolute;
+            top: 0; left: -50%; width: 200%; height: 200%;
+            background-image: 
+                linear-gradient(rgba(255, 0, 255, 0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 255, 0.4) 1px, transparent 1px);
+            background-size: 60px 60px;
+            transform-origin: 50% 0;
+            transform: rotateX(60deg) translateY(0);
+            box-shadow: inset 0 0 100px #0b0014;
+            animation: grid-move 3s linear infinite;
+            /* 远处的雾气遮罩 */
+            mask-image: linear-gradient(to bottom, transparent 0%, black 40%);
+        }
+        @keyframes grid-move {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 60px; }
+        }
+
+        /* --- 2. 复古落日 --- */
+        .retro-sun {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, var(--synth-sun-1), var(--synth-sun-2));
+            box-shadow: 0 0 40px var(--synth-sun-2), 0 0 80px var(--synth-sun-1);
+            z-index: 0;
+            /* 条纹切割效果 */
+            mask-image: linear-gradient(
+                to bottom,
+                black 0%, black 40%,
+                transparent 40%, transparent 42%,
+                black 42%, black 48%,
+                transparent 48%, transparent 51%,
+                black 51%, black 58%,
+                transparent 58%, transparent 62%,
+                black 62%, black 70%,
+                transparent 70%, transparent 75%,
+                black 75%, black 85%,
+                transparent 85%, transparent 92%,
+                black 92%, black 100%
+            );
+        }
+
+        /* --- 3. 远山剪影 --- */
+        .mountains {
+            position: fixed;
+            bottom: 45%;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: #0b0014;
+            clip-path: polygon(
+                0% 100%, 0% 80%, 10% 40%, 20% 70%, 30% 20%, 40% 60%, 
+                50% 30%, 60% 70%, 70% 10%, 80% 60%, 90% 40%, 100% 90%, 100% 100%
+            );
+            z-index: 1;
+            box-shadow: 0 -5px 20px var(--neon-pink);
+        }
+
+        /* --- 4. 霓虹字体特效 --- */
+        .neon-title {
+            font-family: 'Monoton', cursive;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #fff,
+                0 0 20px var(--neon-blue),
+                0 0 40px var(--neon-blue),
+                0 0 80px var(--neon-blue);
+        }
+
+        /* --- 5. 铬金面板 --- */
+        .chrome-panel {
+            background: rgba(11, 0, 20, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-image: linear-gradient(to bottom, var(--neon-blue), var(--neon-pink)) 1;
+            box-shadow: 
+                0 0 15px var(--neon-blue),
+                inset 0 0 20px rgba(255, 0, 255, 0.2);
+            transform: skewX(-5deg); /* 倾斜造型 */
+        }
+        .content-fix {
+            transform: skewX(5deg); /* 内容反向倾斜修正 */
+        }
+
+        /* --- 6. 镭射输入框 --- */
+        .input-synth {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid var(--neon-pink);
+            color: #fff;
+            box-shadow: 0 0 5px var(--neon-pink);
+            transition: all 0.3s;
+        }
+        .input-synth:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+            outline: none;
+            background: rgba(0, 240, 255, 0.1);
+        }
+
+        /* --- 7. 80年代按钮 --- */
+        .btn-retro {
+            background: linear-gradient(90deg, var(--neon-pink), #8c00ff);
+            color: white;
+            text-transform: uppercase;
+            border: none;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            transition: all 0.2s;
+        }
+        .btn-retro:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px var(--neon-pink);
+            text-shadow: 0 0 5px white;
+        }
+        .btn-retro:active { transform: scale(0.95); }
+
+        /* --- VHS 扫描线 --- */
+        .vhs-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                transparent 0,
+                transparent 2px,
+                rgba(0,0,0,0.2) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- VHS 滤镜 -->
+    <div class="vhs-overlay"></div>
+
+    <!-- 3D 场景 -->
+    <div class="retro-sun"></div>
+    <div class="mountains"></div>
+    <div class="perspective-container">
+        <div class="grid-floor"></div>
+    </div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-50 w-full max-w-[480px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 霓虹分割线 ---
+        const NeonDivider = () => (
+            <div className="h-1 w-full bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent my-6 opacity-80 shadow-[0_0_10px_#00f0ff]"></div>
+        );
+
+        // --- 磁带风输入框 ---
+        const SynthInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-6">
+                <label className="block text-[#00f0ff] text-xs uppercase tracking-widest mb-1 shadow-black drop-shadow-md">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="input-synth w-full h-12 px-4 text-lg font-bold tracking-wider"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-2 top-2 z-10">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 倒计时按钮 (Turbo Mode) ---
+        const TurboBtn = ({ onClick, count }) => (
+            <button
+                type="button"
+                onClick={onClick}
+                disabled={count > 0}
+                className={`
+                    h-8 px-3 text-xs font-bold border-2 transition-all
+                    ${count > 0 
+                        ? 'border-gray-600 text-gray-500 cursor-not-allowed' 
+                        : 'border-[#ffbd00] text-[#ffbd00] hover:bg-[#ffbd00] hover:text-black hover:shadow-[0_0_10px_#ffbd00]'}
+                `}
+            >
+                {count > 0 ? `COOL ${count}` : 'TURBO'}
+            </button>
+        );
+
+        // --- 页面: Login ---
+        const Login = ({ nav }) => {
+            const [data, setData] = useState({u:'', p:''});
+
+            return (
+                <motion.div 
+                    initial={{ y: 50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }} 
+                    exit={{ y: -50, opacity: 0 }}
+                    className="content-fix"
+                >
+                    <div className="text-center mb-8">
+                        <h1 className="neon-title text-6xl mb-2">MIAMI</h1>
+                        <h2 className="text-[#ff00ff] text-2xl tracking-[0.5em] font-bold uppercase" style={{textShadow: '0 0 10px #ff00ff'}}>Chat Vice</h2>
+                    </div>
+
+                    <SynthInput label="Player One" value={data.u} onChange={e=>setData({...data, u:e.target.value})} />
+                    <SynthInput label="Passcode" type="password" value={data.p} onChange={e=>setData({...data, p:e.target.value})} />
+
+                    <div className="flex justify-between items-center mb-6 text-xs text-gray-300">
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-[#00f0ff]">
+                            <div className="w-4 h-4 border border-[#00f0ff] bg-black/50"></div> Auto-Drive
+                        </label>
+                        <button onClick={()=>nav('reset')} className="hover:text-[#ff00ff] hover:underline decoration-[#ff00ff]">REWIND?</button>
+                    </div>
+
+                    <button onClick={()=>alert('START ENGINE')} className="btn-retro w-full h-14 text-xl font-bold tracking-widest italic">
+                        START ENGINE
+                    </button>
+                    
+                    <div className="mt-6 text-center">
+                        <button onClick={()=>nav('reg')} className="text-sm text-[#00f0ff] uppercase tracking-widest hover:shadow-[0_0_10px_#00f0ff] transition-shadow border border-[#00f0ff] px-4 py-1 rounded-full">
+                            Insert Coin (Register)
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ x: 100, opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: -100, opacity: 0 }}
+                    className="content-fix"
+                >
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-bold text-white italic" style={{textShadow: '2px 2px 0 #ff00ff'}}>NEW RACER</h2>
+                        <button onClick={()=>nav('login')} className="text-[#00f0ff] text-2xl hover:rotate-90 transition-transform"><i className="ri-close-fill"></i></button>
+                    </div>
+
+                    <SynthInput label="Callsign" />
+                    <SynthInput 
+                        label="Frequency (Email)" 
+                        rightElem={<TurboBtn count={count} onClick={()=>setCount(60)} />}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <SynthInput label="Key" />
+                        <SynthInput label="Secret" type="password" />
+                    </div>
+
+                    <NeonDivider />
+
+                    <button onClick={()=>{alert('READY!');nav('login')}} className="btn-retro w-full h-12 font-bold tracking-widest">
+                        PRESS START
+                    </button>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    className="content-fix"
+                >
+                    <div className="text-center mb-8">
+                        <i className="ri-disc-line text-6xl text-[#ffbd00] animate-spin-slow" style={{animationDuration: '3s'}}></i>
+                        <h2 className="text-2xl font-bold mt-4 text-[#ffbd00]">SYSTEM REBOOT</h2>
+                    </div>
+
+                    <SynthInput 
+                        label="Target Frequency" 
+                        rightElem={<TurboBtn count={count} onClick={()=>setCount(60)} />}
+                    />
+                    <SynthInput label="Override Code" />
+                    <SynthInput label="New Secret" type="password" />
+
+                    <div className="mt-8 grid grid-cols-2 gap-4">
+                        <button onClick={()=>nav('login')} className="border-2 border-[#ff00ff] text-[#ff00ff] hover:bg-[#ff00ff] hover:text-white transition-colors h-12 font-bold">EJECT</button>
+                        <button onClick={()=>{alert('REBOOTING...');nav('login')}} className="bg-[#00f0ff] text-black hover:bg-white hover:shadow-[0_0_20px_white] transition-colors h-12 font-bold skew-x-[-10deg]">
+                            SAVE
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+
+            return (
+                <div className="w-full flex justify-center">
+                    {/* 倾斜的铬金面板容器 */}
+                    <div className="chrome-panel w-full max-w-[500px] p-10 relative">
+                        {/* 装饰性激光线条 */}
+                        <div className="absolute top-0 left-10 w-1 h-full bg-[#ff00ff] opacity-50 blur-[2px]"></div>
+                        <div className="absolute top-0 right-10 w-1 h-full bg-[#00f0ff] opacity-50 blur-[2px]"></div>
+
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} />}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

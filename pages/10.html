@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - Dark Covenant</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 引入古典衬线字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --soul-black: #080808;
+            --soul-gold: #c9b585; /* 褪色金 */
+            --soul-gold-dim: #5c5035;
+            --soul-red: #8a2be2; /* 实际上用一点神秘的紫红或深红 */
+            --text-main: #b8b8b8;
+        }
+
+        body {
+            background-color: var(--soul-black);
+            color: var(--text-main);
+            font-family: 'Cormorant Garamond', serif;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- 环境特效 --- */
+        
+        /* 迷雾动画 */
+        .fog-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background: url('https://raw.githubusercontent.com/danielstuart14/CSS_FOG_ANIMATION/master/img/fog1.png') repeat-x;
+            background-size: 200% auto;
+            animation: fog 60s linear infinite;
+        }
+        .fog-container-2 {
+            animation-direction: reverse;
+            animation-duration: 40s;
+            opacity: 0.2;
+            background-position: center;
+        }
+        @keyframes fog {
+            0% { background-position: 0 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* 余烬粒子 (简单的 CSS 实现) */
+        .ember {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: #ffaa33;
+            border-radius: 50%;
+            box-shadow: 0 0 4px #ff4400;
+            animation: rise 4s linear infinite;
+            opacity: 0;
+        }
+        @keyframes rise {
+            0% { opacity: 0; transform: translateY(100vh) scale(0); }
+            20% { opacity: 1; }
+            80% { opacity: 0.5; }
+            100% { opacity: 0; transform: translateY(0) scale(1); }
+        }
+
+        /* --- 字体工具 --- */
+        .font-title { font-family: 'Cinzel Decorative', serif; }
+        .text-gold { color: var(--soul-gold); text-shadow: 0 0 5px rgba(201, 181, 133, 0.3); }
+
+        /* --- 装饰性边框 --- */
+        .ornament-border {
+            position: relative;
+            border: 1px solid var(--soul-gold-dim);
+        }
+        /* 四角花纹 */
+        .ornament-border::before, .ornament-border::after {
+            content: '';
+            position: absolute;
+            width: 8px; height: 8px;
+            border: 2px solid var(--soul-gold);
+            transition: all 0.5s ease;
+        }
+        .ornament-border::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+        .ornament-border::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+        
+        .ornament-border:hover::before, .ornament-border:hover::after {
+            width: 100%; height: 100%;
+            border-color: rgba(201, 181, 133, 0.5);
+        }
+
+        /* --- 输入框 --- */
+        .soul-input {
+            background: rgba(0,0,0,0.3);
+            border: none;
+            border-bottom: 1px solid var(--soul-gold-dim);
+            color: #ddd;
+            font-size: 1.2rem;
+            transition: all 0.5s ease;
+        }
+        .soul-input:focus {
+            outline: none;
+            border-bottom-color: var(--soul-gold);
+            background: linear-gradient(to top, rgba(201, 181, 133, 0.1), transparent);
+            box-shadow: 0 10px 20px -10px rgba(201, 181, 133, 0.2);
+        }
+        .soul-input::placeholder {
+            color: #444;
+            font-family: 'Cinzel Decorative', serif;
+            font-size: 0.9rem;
+        }
+
+        /* --- 按钮 --- */
+        .soul-btn {
+            background: linear-gradient(180deg, rgba(20,20,20,0.8), rgba(10,10,10,1));
+            border: 1px solid var(--soul-gold-dim);
+            color: var(--soul-gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Cinzel Decorative', serif;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .soul-btn:hover:not(:disabled) {
+            border-color: var(--soul-gold);
+            background: rgba(201, 181, 133, 0.1);
+            text-shadow: 0 0 8px var(--soul-gold);
+            box-shadow: inset 0 0 20px rgba(201, 181, 133, 0.2);
+        }
+        .soul-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+        
+        /* 独特的分割线 */
+        .divider-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            opacity: 0.5;
+        }
+        .divider-icon::before, .divider-icon::after {
+            content: '';
+            height: 1px;
+            width: 50px;
+            background: linear-gradient(90deg, transparent, var(--soul-gold), transparent);
+        }
+
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- 迷雾背景 -->
+    <div class="fog-container"></div>
+    <div class="fog-container fog-container-2"></div>
+    
+    <!-- 余烬生成脚本 -->
+    <div id="embers-container" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[500px] p-6"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 余烬效果初始化 ---
+        const EmberEffect = () => {
+            useEffect(() => {
+                const container = document.getElementById('embers-container');
+                const createEmber = () => {
+                    const el = document.createElement('div');
+                    el.className = 'ember';
+                    el.style.left = Math.random() * 100 + 'vw';
+                    el.style.animationDuration = (3 + Math.random() * 4) + 's';
+                    el.style.opacity = Math.random();
+                    container.appendChild(el);
+                    setTimeout(() => el.remove(), 7000);
+                };
+                const interval = setInterval(createEmber, 300);
+                return () => clearInterval(interval);
+            }, []);
+            return null;
+        };
+
+        // --- 羊皮纸/圣旨通知 ---
+        const ScrollToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                className="fixed bottom-20 left-0 right-0 mx-auto w-fit z-50 pointer-events-none"
+            >
+                <div className="bg-[#1a1a1a] border-y border-double border-[#c9b585] px-8 py-3 text-center shadow-[0_0_30px_black]">
+                    <div className="text-[#c9b585] font-title tracking-widest text-sm uppercase mb-1">
+                        {type === 'error' ? 'YOU DIED' : 'MESSAGE'}
+                    </div>
+                    <div className="text-gray-300 font-serif text-lg italic tracking-wide">
+                        “ {msg} ”
+                    </div>
+                </div>
+            </motion.div>
+        );
+
+        // --- 魂系输入框 ---
+        const SoulInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-8 relative group">
+                <label className="block text-center text-[#5c5035] text-xs uppercase tracking-[0.3em] font-title mb-2 group-focus-within:text-[#c9b585] transition-colors">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="soul-input w-full py-2 text-center"
+                        placeholder="... ... ..."
+                    />
+                    {rightElem && (
+                        <div className="absolute right-0 top-2 z-10">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+                {/* 底部装饰菱形 */}
+                <div className="absolute left-1/2 -bottom-[5px] w-2 h-2 bg-[#080808] border border-[#5c5035] rotate-45 -translate-x-1/2 group-focus-within:border-[#c9b585] transition-colors"></div>
+            </div>
+        );
+
+        // --- 魂系按钮 ---
+        const SoulBtn = ({ children, onClick, loading }) => (
+            <button 
+                onClick={onClick} 
+                disabled={loading}
+                className="soul-btn w-full py-4 px-6 text-sm ornament-border"
+            >
+                {loading ? (
+                    <span className="animate-pulse">Invoking...</span>
+                ) : (
+                    <div className="flex items-center justify-center gap-4">
+                        <span className="opacity-50 text-xs">♦</span>
+                        {children}
+                        <span className="opacity-50 text-xs">♦</span>
+                    </div>
+                )}
+            </button>
+        );
+
+        // --- 装饰分割线 ---
+        const Divider = () => (
+            <div className="divider-icon text-[#c9b585]">
+                <div className="w-2 h-2 border border-[#c9b585] rotate-45"></div>
+            </div>
+        );
+
+        // --- 页面: 契约 (Login) ---
+        const Login = ({ nav, notify }) => {
+            const [form, setForm] = useState({u:'', p:''});
+            const [loading, setLoading] = useState(false);
+
+            const submit = () => {
+                setLoading(true);
+                // 模拟延迟，更有仪式感
+                setTimeout(() => {
+                    setLoading(false);
+                    notify('Covenant Established.', 'success');
+                }, 2000);
+            };
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0, filter: 'blur(5px)' }} 
+                    animate={{ opacity: 1, filter: 'blur(0)' }} 
+                    exit={{ opacity: 0, filter: 'blur(5px)' }}
+                    transition={{ duration: 0.8 }}
+                >
+                    <div className="text-center mb-12">
+                        <div className="w-16 h-16 border border-[#c9b585] rounded-full mx-auto mb-6 flex items-center justify-center opacity-80 shadow-[0_0_15px_rgba(201,181,133,0.2)]">
+                            <i className="ri-sword-fill text-2xl text-[#c9b585]"></i>
+                        </div>
+                        <h1 className="font-title text-4xl text-gold mb-2 tracking-widest">COVENANT</h1>
+                        <p className="text-xs text-gray-500 uppercase tracking-[0.4em]">Seek the Elden Ring</p>
+                    </div>
+
+                    <SoulInput label="True Name" value={form.u} onChange={e=>setForm({...form, u:e.target.value})} />
+                    <SoulInput label="Rune (Password)" type="password" value={form.p} onChange={e=>setForm({...form, p:e.target.value})} />
+
+                    <div className="flex justify-center mb-10">
+                        <button onClick={()=>nav('reset')} className="text-xs text-[#5c5035] hover:text-[#c9b585] font-serif italic tracking-wider transition-colors">
+                            Forgotten your vows?
+                        </button>
+                    </div>
+
+                    <div className="space-y-6">
+                        <SoulBtn onClick={submit} loading={loading}>Form Pact</SoulBtn>
+                        <button onClick={()=>nav('reg')} className="w-full text-center text-xs text-gray-600 hover:text-gray-400 uppercase tracking-widest transition-colors mt-4">
+                            New Soul (Register)
+                        </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 新生 (Register) ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                >
+                    <div className="text-center mb-8 border-b border-[#333] pb-4">
+                        <h2 className="font-title text-2xl text-gold tracking-widest">ORIGIN</h2>
+                        <span className="text-[10px] text-gray-600 uppercase">Character Creation</span>
+                    </div>
+
+                    <SoulInput label="Name" />
+                    
+                    <SoulInput 
+                        label="Scroll (Email)" 
+                        rightElem={
+                            <button onClick={()=>setCount(60)} disabled={count>0} className="text-[10px] text-[#c9b585] border border-[#c9b585] px-2 py-1 hover:bg-[#c9b585] hover:text-black transition-colors disabled:opacity-30 font-title">
+                                {count>0 ? count : 'SUMMON'}
+                            </button>
+                        }
+                    />
+
+                    <div className="grid grid-cols-2 gap-8">
+                         <SoulInput label="Sigil (Code)" />
+                         <SoulInput label="Secret" type="password" />
+                    </div>
+
+                    <Divider />
+
+                    <div className="flex gap-4 mt-4">
+                        <button onClick={()=>nav('login')} className="flex-1 py-4 border border-[#333] text-gray-500 font-title text-xs hover:border-gray-500 hover:text-gray-300 transition-colors uppercase">Return</button>
+                        <div className="flex-1">
+                             <SoulBtn onClick={()=>{notify('Soul Created');nav('login')}}>Awaken</SoulBtn>
+                        </div>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: 救赎 (Reset) ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
+                    <div className="text-center mb-10">
+                        <h2 className="font-title text-3xl text-gray-400 mb-2">ABSOLUTION</h2>
+                        <div className="h-px w-20 bg-gradient-to-r from-transparent via-[#c9b585] to-transparent mx-auto"></div>
+                    </div>
+
+                    <SoulInput 
+                        label="Target Soul" 
+                        rightElem={<button onClick={()=>setCount(60)} disabled={count>0} className="text-xs text-[#c9b585] hover:text-white transition-colors"><i className="ri-send-plane-fill"></i></button>}
+                    />
+                    <SoulInput label="Miracle Code" />
+                    <SoulInput label="New Rune" type="password" />
+
+                    <div className="mt-12">
+                         <SoulBtn onClick={()=>{notify('Sin Forgiven');nav('login')}}>Restore Humanity</SoulBtn>
+                    </div>
+                    <div className="text-center mt-6">
+                         <button onClick={()=>nav('login')} className="text-[10px] uppercase text-gray-700 hover:text-[#c9b585] tracking-[0.2em] transition-colors">Turn Back</button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type='success') => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 3500);
+            };
+
+            return (
+                <>
+                    <EmberEffect />
+                    <AnimatePresence>
+                        {toast && <ScrollToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    {/* 容器：像一个古老的石碑或菜单 */}
+                    <div className="relative z-10 w-full min-h-[600px] flex items-center justify-center">
+                        
+                        {/* 装饰边框背景 */}
+                        <div className="absolute inset-0 border border-[#222] pointer-events-none transform scale-95 opacity-50"></div>
+                        <div className="absolute inset-0 border border-[#111] pointer-events-none transform scale-90 opacity-30"></div>
+
+                        {/* 顶部中央装饰 */}
+                        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-px h-20 bg-gradient-to-b from-transparent via-[#c9b585] to-transparent opacity-30"></div>
+
+                        <div className="w-full max-w-lg p-8 relative">
+                            <AnimatePresence mode="wait">
+                                {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                                {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                                {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+
+                    {/* 底部版权 */}
+                    <div className="fixed bottom-6 text-[#333] text-[10px] font-title tracking-[0.3em]">
+                        FROM IM SOFTWARE
+                    </div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

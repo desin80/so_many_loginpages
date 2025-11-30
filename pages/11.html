@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM Client - 8-Bit Adventure</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- 像素字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --px-bg: #2d1b2e;
+            --px-panel: #b45252;
+            --px-border: #d3a068;
+            --px-highlight: #ffcc68;
+            --px-shadow: #4b2d3e;
+            --px-text: #fff0f5;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: var(--px-text);
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            /* 强制像素化渲染 */
+            image-rendering: pixelated; 
+        }
+
+        /* --- 动态像素天空背景 --- */
+        .pixel-sky {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #0f0518 0%, #351a3a 50%, #6d3348 100%);
+            z-index: 0;
+        }
+        /* 像素星星 */
+        .stars {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.5;
+            animation: moveStars 100s linear infinite;
+        }
+        @keyframes moveStars { from {background-position: 0 0;} to {background-position: 0 1000px;} }
+
+        /* --- CRT 屏幕效果滤镜 --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* --- NES 风格边框 (CSS Box Shadow Pixel Art) --- */
+        .nes-container {
+            position: relative;
+            background: #212529;
+            margin: 4px;
+            /* 模拟像素边框 */
+            box-shadow:
+                -4px 0 0 0 #000,
+                4px 0 0 0 #000,
+                0 -4px 0 0 #000,
+                0 4px 0 0 #000;
+        }
+        /* 复杂的双层边框 */
+        .rpg-panel {
+            background-color: #3e3264;
+            border: 4px solid #b86f50;
+            outline: 4px solid #3e3264;
+            box-shadow: 
+                0 0 0 8px #000,
+                10px 10px 0 0 rgba(0,0,0,0.5); /* 硬阴影 */
+            position: relative;
+        }
+        .rpg-panel::after {
+            /* 角落装饰 */
+            content: '';
+            position: absolute;
+            top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border: 2px dashed rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* --- 像素字体 --- */
+        .font-pixel-bold { font-family: 'Press Start 2P', cursive; }
+        .font-pixel-text { font-family: 'VT323', monospace; font-size: 1.5rem; }
+
+        /* --- 像素按钮 --- */
+        .pixel-btn {
+            background-color: #ff0055;
+            color: #fff;
+            border: none;
+            position: relative;
+            box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+            /* 像素化边缘 */
+            box-shadow: 
+                inset -4px -4px 0px 0px rgba(0,0,0,0.3),
+                -4px 0 0 0 #000,
+                4px 0 0 0 #000,
+                0 -4px 0 0 #000,
+                0 4px 0 0 #000;
+            margin: 4px;
+        }
+        .pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: 
+                inset -4px -4px 0px 0px rgba(0,0,0,0.3),
+                -4px 0 0 0 #000,
+                4px 0 0 0 #000,
+                0 -4px 0 0 #000,
+                0 0 0 0 #000; /* Bottom shadow disappears */
+        }
+        .pixel-btn:hover {
+            background-color: #ff2277;
+        }
+
+        /* --- 像素输入框 --- */
+        .pixel-input {
+            background-color: #fff;
+            color: #000;
+            border: 4px solid #000;
+            font-family: 'VT323', monospace;
+            font-size: 1.5rem;
+            box-shadow: inset 4px 4px 0px 0px #ccc;
+        }
+        .pixel-input:focus {
+            background-color: #e0f8cf; /* Gameboy Green Tint */
+            outline: none;
+        }
+
+        /* 像素精灵动画 (简单的 CSS keyframes) */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .sprite-float { animation: float 2s step-end infinite; }
+
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- CRT 滤镜层 -->
+    <div class="crt-overlay"></div>
+    
+    <!-- 动态背景 -->
+    <div class="pixel-sky">
+        <div class="stars"></div>
+        <!-- 远处的像素山 -->
+        <div class="fixed bottom-0 left-0 w-full h-32 bg-[#4b2d3e]" 
+             style="clip-path: polygon(0% 100%, 0% 50%, 10% 40%, 20% 60%, 30% 30%, 45% 70%, 55% 40%, 65% 60%, 75% 30%, 90% 50%, 100% 40%, 100% 100%);">
+        </div>
+        <div class="fixed bottom-0 left-0 w-full h-16 bg-[#2d1b2e]" 
+             style="clip-path: polygon(0% 100%, 10% 80%, 25% 90%, 40% 60%, 55% 85%, 70% 70%, 85% 90%, 100% 70%, 100% 100%);">
+        </div>
+    </div>
+
+    <!-- UI 主体 -->
+    <div id="root" class="relative z-10 w-full max-w-[500px] p-4"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- 像素爱心生命值组件 ---
+        const Hearts = () => (
+            <div className="flex gap-2 mb-4">
+                {[1,2,3].map(i => (
+                    <div key={i} className="w-6 h-6 bg-red-500 relative animate-pulse"
+                         style={{
+                             boxShadow: '4px 0 0 #000, -4px 0 0 #000, 0 4px 0 #000, 0 -4px 0 #000',
+                             clipPath: 'polygon(10% 0, 40% 0, 50% 20%, 60% 0, 90% 0, 100% 20%, 100% 50%, 50% 100%, 0 50%, 0 20%)'
+                         }}>
+                    </div>
+                ))}
+            </div>
+        );
+
+        // --- 对话框式 Toast ---
+        const PixelToast = ({ msg, type }) => (
+            <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 50, opacity: 0 }}
+                className="fixed bottom-8 left-4 right-4 z-50 pointer-events-none"
+            >
+                <div className="bg-blue-800 border-4 border-white p-4 text-white font-pixel-text text-xl shadow-[8px_8px_0_0_#000]">
+                    <div className="flex gap-4 items-center">
+                        <div className="w-10 h-10 bg-yellow-400 border-2 border-black animate-spin"></div>
+                        <span>{type === 'error' ? '>> ERROR: ' : '>> SYSTEM: '} {msg}</span>
+                    </div>
+                    {/* 下箭头动画 */}
+                    <div className="absolute bottom-2 right-2 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white animate-bounce"></div>
+                </div>
+            </motion.div>
+        );
+
+        // --- 像素输入框 ---
+        const PixelInput = ({ label, value, onChange, type="text", rightElem }) => (
+            <div className="mb-6">
+                <label className="block font-pixel-bold text-xs text-[#ffcc68] mb-2 uppercase tracking-widest text-shadow-sm">
+                    {label}
+                </label>
+                <div className="relative">
+                    <input 
+                        type={type} 
+                        value={value} 
+                        onChange={onChange}
+                        className="pixel-input w-full p-2 h-12"
+                    />
+                    {rightElem && (
+                        <div className="absolute right-2 top-2 z-10">
+                            {rightElem}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // --- 像素按钮 ---
+        const PixelBtn = ({ children, onClick, loading, color="pink" }) => {
+            const colors = {
+                pink: { bg: '#ff0055', hover: '#ff2277' },
+                green: { bg: '#00cc44', hover: '#22ff66' },
+                blue: { bg: '#0088ff', hover: '#3399ff' }
+            };
+            const c = colors[color] || colors.pink;
+
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={loading}
+                    className="w-full h-14 font-pixel-bold text-xs uppercase text-white relative transition-transform active:translate-y-1"
+                    style={{
+                        backgroundColor: c.bg,
+                        boxShadow: `inset -4px -4px 0 rgba(0,0,0,0.3), 4px 4px 0 #000`,
+                        border: '4px solid #000'
+                    }}
+                >
+                    {loading ? 'LOADING...' : children}
+                </button>
+            );
+        };
+
+        // --- 页面: Login ---
+        const Login = ({ nav, notify }) => {
+            return (
+                <motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }}>
+                    <div className="text-center mb-8">
+                        <h1 className="font-pixel-bold text-2xl text-[#ffcc68] mb-4 text-shadow-lg leading-relaxed">
+                            PIXEL<br/>CHAT V1.0
+                        </h1>
+                        <Hearts />
+                        <p className="font-pixel-text text-gray-400">PRESS START TO LOGIN</p>
+                    </div>
+
+                    <div className="bg-[#00000040] p-4 border-2 border-[#000] mb-6">
+                        <PixelInput label="Player 1" />
+                        <PixelInput label="Password" type="password" />
+                    </div>
+
+                    <PixelBtn onClick={() => notify('LEVEL UP! LOGGED IN.')} color="green">START GAME</PixelBtn>
+                    
+                    <div className="mt-4 flex justify-between px-2">
+                        <button onClick={()=>nav('reg')} className="font-pixel-text text-xl hover:text-[#ffcc68] hover:underline">> NEW GAME</button>
+                        <button onClick={()=>nav('reset')} className="font-pixel-text text-xl hover:text-red-400 hover:underline">> CONTINUE?</button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Register ---
+        const Register = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}>
+                    <div className="mb-6 border-b-4 border-[#000] pb-2 flex justify-between items-end">
+                        <h2 className="font-pixel-bold text-sm text-[#55ff55]">CREATE CHARACTER</h2>
+                        <button onClick={()=>nav('login')} className="font-pixel-bold text-xs text-red-500">X</button>
+                    </div>
+
+                    <PixelInput label="Name" />
+                    <PixelInput 
+                        label="Email Scroll" 
+                        rightElem={
+                            <button onClick={()=>setCount(60)} disabled={count>0} className="font-pixel-bold text-[10px] bg-yellow-400 text-black px-2 py-1 border-2 border-black hover:bg-white disabled:bg-gray-400">
+                                {count>0 ? count : 'GET'}
+                            </button>
+                        }
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <PixelInput label="Key Item" />
+                        <PixelInput label="Secret" type="password" />
+                    </div>
+
+                    <div className="mt-6">
+                        <PixelBtn onClick={()=>{notify('HERO BORN!');nav('login')}} color="blue">SAVE & JOIN</PixelBtn>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 页面: Reset ---
+        const Reset = ({ nav, notify }) => {
+            const [count, setCount] = useState(0);
+            useEffect(()=>{if(count>0)setTimeout(()=>setCount(c=>c-1),1000)},[count]);
+
+            return (
+                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
+                    <div className="bg-red-900 border-4 border-red-500 p-2 mb-6 text-center">
+                        <h2 className="font-pixel-bold text-xs text-white animate-pulse">! DANGER ZONE !</h2>
+                        <p className="font-pixel-text text-xl">RESET PASSWORD QUEST</p>
+                    </div>
+
+                    <PixelInput 
+                        label="Target Email" 
+                        rightElem={<button onClick={()=>setCount(60)} disabled={count>0} className="font-pixel-text bg-white text-black px-2 border-2 border-black">SEND</button>}
+                    />
+                    <PixelInput label="Magic Code" />
+                    <PixelInput label="New Pass" type="password" />
+
+                    <div className="mt-8">
+                         <PixelBtn onClick={()=>{notify('QUEST COMPLETE');nav('login')}} color="pink">CAST SPELL</PixelBtn>
+                         <button onClick={()=>nav('login')} className="w-full text-center mt-4 font-pixel-text text-xl hover:text-yellow-400">
+                             &lt; RETURN TO TITLE
+                         </button>
+                    </div>
+                </motion.div>
+            );
+        };
+
+        // --- 主 App ---
+        const App = () => {
+            const [page, setPage] = useState('login');
+            const [toast, setToast] = useState(null);
+
+            const notify = (msg, type='success') => {
+                setToast({msg, type});
+                setTimeout(()=>setToast(null), 3000);
+            };
+
+            return (
+                <>
+                    <AnimatePresence>
+                        {toast && <PixelToast msg={toast.msg} type={toast.type} />}
+                    </AnimatePresence>
+
+                    {/* RPG 面板容器 */}
+                    <div className="rpg-panel w-full p-6 md:p-8 relative">
+                        {/* 顶部装饰条 */}
+                        <div className="absolute top-0 left-0 w-full h-2 bg-[#ffcc68] border-b-2 border-black"></div>
+                        
+                        {/* 装饰精灵图 (小幽灵) */}
+                        <div className="absolute -top-12 -left-4 w-12 h-12 bg-white sprite-float z-0"
+                             style={{
+                                 boxShadow: '4px 0 0 #000, -4px 0 0 #000, 0 4px 0 #000, 0 -4px 0 #000',
+                                 clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 100%, 80% 90%, 60% 100%, 40% 90%, 20% 100%, 0% 100%, 0% 20%)'
+                             }}>
+                             <div className="absolute top-3 left-2 w-2 h-2 bg-black"></div>
+                             <div className="absolute top-3 right-2 w-2 h-2 bg-black"></div>
+                        </div>
+
+                        <AnimatePresence mode="wait">
+                            {page === 'login' && <Login key="login" nav={setPage} notify={notify} />}
+                            {page === 'reg' && <Register key="reg" nav={setPage} notify={notify} />}
+                            {page === 'reset' && <Reset key="reset" nav={setPage} notify={notify} />}
+                        </AnimatePresence>
+
+                        {/* 底部版权 */}
+                        <div className="mt-8 text-center font-pixel-text text-gray-500 text-lg">
+                            © 2025 IM CORP. ALL RIGHTS RESERVED.
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
